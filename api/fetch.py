@@ -11,6 +11,8 @@ import logging
 import sys
 import pytz
 import certifi
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 load_dotenv()
 url = os.getenv("URL")
@@ -49,7 +51,7 @@ session.mount("http://", adapter)
 def fetch_html_online():
     try:
         logging.info("🌐 Fetching SPPU result page...")
-        response = session.get(target_url, headers=headers, timeout=30)
+        response = session.get(target_url, headers=headers, timeout=30 , verify=False)
         response.raise_for_status()
         logging.info("✅ Successfully fetched HTML content.")
         return response.text
