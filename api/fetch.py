@@ -10,6 +10,7 @@ import json
 import logging
 import sys
 import pytz
+import certifi
 
 load_dotenv()
 url = os.getenv("URL")
@@ -50,7 +51,7 @@ def fetch_html_online():
         logging.info("🌐 Fetching SPPU result page...")
         # for local production uncomment this:
         # response = session.get(target_url, headers=headers, timeout=30, verify=False)
-        response = session.get(target_url, headers=headers, timeout=30)
+        response = session.get(target_url, headers=headers, timeout=30, verify=certifi.where())
         response.raise_for_status()
         logging.info("✅ Successfully fetched HTML content.")
         return response.text
