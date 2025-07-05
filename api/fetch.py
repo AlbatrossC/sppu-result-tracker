@@ -9,90 +9,60 @@ import os
 import json
 import logging
 import sys
-import pytz  # for IST support
+import pytz
 
-# 🛠️ Load environment variables
 load_dotenv()
 url = os.getenv("URL")
 key = os.getenv("KEY")
 supabase: Client = create_client(url, key)
 
-# 🔧 Logging Configuration
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 
-# 🌐 SPPU Result Page URL
-target_url = "https://onlineresults.unipune.ac.in/Result/Dashboard/Default"
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-}
-
-# 🕒 Get IST time for filename and created_at
 ist = pytz.timezone('Asia/Kolkata')
 now = datetime.now(ist)
 created_at = now.strftime("%H:%M %d %B %Y")
 time_suffix = now.strftime("%H_%M")
 file_name = f"sppu_result_{time_suffix}.html"
+file_base_name = f"sppu_result_{time_suffix}"
 
-# 🧠 Set up Retry Strategy
+target_url = "https://onlineresults.unipune.ac.in/Result/Dashboard/Default"
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+}
+
 session = requests.Session()
 retry_strategy = Retry(
     total=3,
-    backoff_factor=5,  # exponential backoff: 5s, 10s, 20s
+    backoff_factor=5,
     status_forcelist=[429, 500, 502, 503, 504],
     allowed_methods=["GET"]
 )
-adapter = HTTPAdapter(max_retries=retry_strategy)
+adapter = HTTPAdapter(max_retries=retry_strategy, pool_connections=10, pool_maxsize=10)
 session.mount("https://", adapter)
 session.mount("http://", adapter)
 
 def fetch_html_online():
-    logging.info("🌐 Fetching SPPU result page...")
-    if target_url.startswith("https://") and "verify=False" in str(session.get):
-        logging.warning("⚠️ SSL verification disabled. Consider enabling it in production.")
-
     try:
-        response = session.get(target_url, headers=headers, timeout=30, verify=False)
-        if response.status_code == 200:
-            logging.info("✅ Successfully fetched HTML content.")
-            return response.text
-        else:
-            logging.error(f"❌ HTTP {response.status_code} from SPPU site.")
-            sys.exit(1)
+        logging.info("🌐 Fetching SPPU result page...")
+        # for local production uncomment this:
+        # response = session.get(target_url, headers=headers, timeout=30, verify=False)
+        response = session.get(target_url, headers=headers, timeout=30)
+        response.raise_for_status()
+        logging.info("✅ Successfully fetched HTML content.")
+        return response.text
     except requests.exceptions.Timeout:
-        logging.error("❌ Timeout: SPPU site did not respond within 30 seconds.")
-        sys.exit(1)
+        logging.error("❌ Timeout: SPPU site did not respond.")
+        raise
     except requests.exceptions.RequestException as e:
-        logging.error(f"❌ Network error while fetching SPPU site: {e}")
-        sys.exit(1)
-
-def upload_html_to_db(file_name, html_body):
-    try:
-        logging.info("📤 Uploading HTML to 'html_files' table...")
-        supabase.table("html_files").insert({
-            "file_name": file_name,
-            "created_at": created_at,
-            "html_body": html_body
-        }).execute()
-        logging.info("✅ HTML uploaded.")
-    except Exception as e:
-        logging.error(f"❌ Failed to upload HTML to Supabase: {e}")
-        sys.exit(1)
-
-def fetch_html_from_db(file_name):
-    try:
-        logging.info(f"🔍 Fetching HTML from Supabase for file: {file_name}")
-        response = supabase.table("html_files").select("*").eq("file_name", file_name).execute()
-        records = response.data
-        if not records:
-            logging.error("❌ No HTML file found in database.")
-            sys.exit(1)
-        return records[0]["html_body"]
-    except Exception as e:
-        logging.error(f"❌ Supabase fetch error: {e}")
-        sys.exit(1)
+        logging.error(f"❌ Network error: {e}")
+        raise
 
 def parse_html(html_content):
-    logging.info("🔎 Parsing HTML for result entries...")
+    logging.info("🔍 Parsing HTML content...")
     soup = BeautifulSoup(html_content, "html.parser")
     results = []
 
@@ -107,35 +77,34 @@ def parse_html(html_content):
                     "result_date": date
                 })
             except Exception as e:
-                logging.warning(f"⚠️ Skipping malformed row: {e}")
+                logging.warning(f"⚠️ Skipped row due to error: {e}")
 
     logging.info(f"✅ Parsed {len(results)} entries.")
     return results
 
-def upload_json_to_db(file_name, json_data):
+def upload_combined_data(file_name, html_body, json_data):
     try:
-        json_file_name = file_name.replace(".html", ".json")
-        logging.info("📤 Uploading parsed JSON to 'json_files' table...")
-        supabase.table("json_files").insert({
-            "file_name": json_file_name,
+        logging.info("📤 Uploading combined HTML + JSON to Supabase...")
+        supabase.table("sppu_results").insert({
+            "file_name": file_name.replace(".html", ""),
             "created_at": created_at,
+            "html_body": html_body,
             "json_text": json.dumps(json_data, ensure_ascii=False)
         }).execute()
-        logging.info("✅ JSON uploaded.")
+        logging.info("✅ Combined data uploaded.")
     except Exception as e:
-        logging.error(f"❌ Failed to upload JSON to Supabase: {e}")
-        sys.exit(1)
+        logging.error(f"❌ Upload failed: {e}")
+        raise
 
 def main():
     try:
         html_content = fetch_html_online()
-        upload_html_to_db(file_name, html_content)
-        html_from_db = fetch_html_from_db(file_name)
-        parsed_data = parse_html(html_from_db)
-        upload_json_to_db(file_name, parsed_data)
-        logging.info("🎉 All steps completed successfully.")
+        parsed_data = parse_html(html_content)
+        upload_combined_data(file_base_name, html_content, parsed_data)
+        logging.info(f"📄 File created: {file_name}")
+        logging.info("🎉 Job completed successfully.")
     except Exception as e:
-        logging.exception(f"❌ Unhandled exception: {e}")
+        logging.exception("❌ Unhandled error occurred.")
         sys.exit(1)
 
 if __name__ == "__main__":
