@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/fetch.js": {
+      "schedule": "*/10 * * * *"
+    }
+  }
+}
