@@ -49,7 +49,7 @@ session.mount("http://", adapter)
 def fetch_html_online():
     try:
         logging.info("🌐 Fetching SPPU result page...")
-        response = session.get(target_url, headers=headers, timeout=30, verify=False)
+        response = session.get(target_url, headers=headers, timeout=30)
         response.raise_for_status()
         logging.info("✅ Successfully fetched HTML content.")
         return response.text
