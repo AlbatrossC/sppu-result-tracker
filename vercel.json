@@ -1,8 +1,19 @@
 {
-  "cron": [
+  "version": 2,
+  "builds": [
     {
-      "path": "/api/fetch",
-      "schedule": "*/10 * * * *"
+      "src": "app.py",
+      "use": "@vercel/python",
+      "config": {
+        "runtime": "python3.9"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "app.py",
+      "methods": ["GET", "POST", "OPTIONS"]
     }
   ]
 }
