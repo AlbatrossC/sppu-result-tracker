@@ -1,64 +1,363 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cool HTML Page</title>
-  <style>
-    body {
-      margin: 0;
-      height: 100vh;
-      background: linear-gradient(135deg, #1e3c72, #2a5298);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      font-family: 'Segoe UI', sans-serif;
-    }
-    h1 {
-      font-size: 3rem;
-      animation: glow 2s ease-in-out infinite alternate;
-    }
-    @keyframes glow {
-      from { text-shadow: 0 0 10px #0ff, 0 0 20px #0ff; }
-      to { text-shadow: 0 0 20px #0ff, 0 0 40px #0ff; }
-    }
-    button {
-      margin-top: 20px;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 25px;
-      background-color: #00d2ff;
-      background-image: linear-gradient(45deg, #00d2ff, #3a7bd5);
-      color: white;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    button:hover {
-      transform: scale(1.05);
-      box-shadow: 0 0 10px #00d2ff;
-    }
-    #clock {
-      margin-top: 30px;
-      font-size: 1.5rem;
-      letter-spacing: 1px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPPU Result Tracker</title>
+    <style>
+        :root {
+            --background: hsl(223.8136 0.0005% 98.6829%);
+            --foreground: hsl(0 0% 0%);
+            --card: hsl(223.8136 -172.5242% 100.0000%);
+            --card-foreground: hsl(0 0% 0%);
+            --popover: hsl(223.8136 0.0005% 98.6829%);
+            --popover-foreground: hsl(0 0% 0%);
+            --primary: hsl(0 0% 0%);
+            --primary-foreground: hsl(223.8136 -172.5242% 100.0000%);
+            --secondary: hsl(223.8136 0.0001% 92.1478%);
+            --secondary-foreground: hsl(0 0% 0%);
+            --muted: hsl(223.8136 0.0002% 96.0587%);
+            --muted-foreground: hsl(223.8136 0.0000% 32.3067%);
+            --accent: hsl(223.8136 0.0001% 92.1478%);
+            --accent-foreground: hsl(0 0% 0%);
+            --destructive: hsl(358.4334 74.9120% 59.7455%);
+            --destructive-foreground: hsl(223.8136 -172.5242% 100.0000%);
+            --border: hsl(223.8136 0.0001% 89.5577%);
+            --input: hsl(223.8136 0.0001% 92.1478%);
+            --ring: hsl(0 0% 0%);
+            --chart-1: hsl(40.6655 100.2361% 50.9228%);
+            --chart-2: hsl(223.7490 85.9924% 55.8092%);
+            --chart-3: hsl(223.8136 0.0000% 64.4710%);
+            --chart-4: hsl(223.8136 0.0001% 89.5577%);
+            --chart-5: hsl(223.8136 0.0000% 45.6078%);
+            --sidebar: hsl(223.8136 0.0005% 98.6829%);
+            --sidebar-foreground: hsl(0 0% 0%);
+            --sidebar-primary: hsl(0 0% 0%);
+            --sidebar-primary-foreground: hsl(223.8136 -172.5242% 100.0000%);
+            --sidebar-accent: hsl(223.8136 0.0001% 92.1478%);
+            --sidebar-accent-foreground: hsl(0 0% 0%);
+            --sidebar-border: hsl(223.8136 0.0001% 92.1478%);
+            --sidebar-ring: hsl(0 0% 0%);
+            --font-sans: Geist, sans-serif;
+            --font-serif: Georgia, serif;
+            --font-mono: Geist Mono, monospace;
+            --radius: 0.5rem;
+            --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+            --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+            --shadow-sm: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+            --shadow: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+            --shadow-md: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 2px 4px -1px hsl(0 0% 0% / 0.18);
+            --shadow-lg: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 4px 6px -1px hsl(0 0% 0% / 0.18);
+            --shadow-xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 8px 10px -1px hsl(0 0% 0% / 0.18);
+            --shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
+            --tracking-normal: 0em;
+            --spacing: 0.25rem;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-sans), Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background);
+            color: var(--foreground);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        .header {
+            background-color: var(--card);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 0;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            text-decoration: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .logo:hover {
+            opacity: 0.8;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .last-checked {
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+            padding: 8px 16px;
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+            border: 1px solid var(--primary);
+        }
+
+        .notification-btn {
+            background-color: var(--secondary);
+            color: var(--secondary-foreground);
+            padding: 8px 16px;
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .notification-btn:hover {
+            background-color: var(--accent);
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 32px 0;
+        }
+
+        .intro {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .tagline {
+            font-size: 1.15rem;
+            margin: 0 0 8px 0;
+            color: var(--foreground);
+        }
+
+        .description {
+            color: var(--muted-foreground);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        /* Tables */
+        .table-section {
+            margin-bottom: 32px;
+        }
+
+        .table-section h2 {
+            margin-bottom: 16px;
+            color: var(--foreground);
+            font-size: 1.2rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--card);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        th {
+            background-color: var(--muted);
+            color: var(--foreground);
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:hover {
+            background-color: var(--muted);
+        }
+
+        .no-data {
+            text-align: center;
+            color: var(--muted-foreground);
+            font-style: italic;
+        }
+
+        /* Footer */
+        .footer {
+            background-color: var(--muted);
+            border-top: 1px solid var(--border);
+            padding: 20px 0;
+            text-align: center;
+            margin-top: 48px;
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .header-buttons {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .logo {
+                font-size: 1.25rem;
+            }
+
+            .container {
+                padding: 0 15px;
+            }
+
+            table {
+                font-size: 0.9rem;
+            }
+
+            th, td {
+                padding: 10px 12px;
+            }
+        }
+    </style>
 </head>
 <body>
-  <h1>Welcome to Cool Land 🌌</h1>
-  <button onclick="alert('You clicked the cool button!')">Click Me</button>
-  <div id="clock"></div>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="/" class="logo">SPPU Result Tracker</a>
+                <div class="header-buttons">
+                    <div class="last-checked">Last Checked: {{ created_at }}</div>
+                    <button class="notification-btn">Allow Notifications</button>
+                </div>
+            </div>
+        </div>
+    </header>
 
-  <script>
-    function updateClock() {
-      document.getElementById('clock').innerText =
-        new Date().toLocaleTimeString();
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
-  </script>
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Introduction -->
+            <div class="intro">
+                <h2 class="tagline">Real-time Result Monitoring</h2>
+                <p class="description">This website checks SPPU result website every 10 minutes for the latest updates</p>
+            </div>
+
+            <!-- Latest Results -->
+            <div class="table-section">
+                <h2>Latest Results Announced</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Course Name</th>
+                            <th>Result Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if added %}
+                            {% for course in added %}
+                                <tr>
+                                    <td>{{ course.course_name }}</td>
+                                    <td>{{ course.result_date }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% elif latest_results %}
+                            {% for course in latest_results %}
+                                <tr>
+                                    <td>{{ course.course_name }}</td>
+                                    <td>{{ course.result_date }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr><td colspan="2" class="no-data">No new results added.</td></tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Removed Results (Only show if there are removed courses) -->
+            {% if removed %}
+            <div class="table-section">
+                <h2>Removed Results</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Course Name</th>
+                            <th>Result Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for course in removed %}
+                            <tr>
+                                <td>{{ course.course_name }}</td>
+                                <td>{{ course.result_date }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <!-- Previous Results -->
+            <div class="table-section">
+                <h2>Previous Results</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Course Name</th>
+                            <th>Result Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for course in unchanged %}
+                            <tr>
+                                <td>{{ course.course_name }}</td>
+                                <td>{{ course.result_date }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="2" class="no-data">No unchanged results.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p><a href="#" target="_blank">View Source Code</a></p>
+        </div>
+    </footer>
 </body>
 </html>
