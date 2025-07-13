@@ -7,4 +7,4 @@ certifi
 Flask
 requests
 python-dotenv
-psycopg2
+psycopg2-binary
