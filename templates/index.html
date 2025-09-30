@@ -4,570 +4,384 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SPPU Result Tracker</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🎓</text></svg>">
     <style>
-        :root {
-            --background: hsl(223.81, 0.05%, 98.68%);
-            --foreground: hsl(0, 0%, 10%);
-            --card: hsl(0, 0%, 100%);
-            --card-foreground: hsl(0, 0%, 10%);
-            --popover: hsl(223.81, 0.05%, 98.68%);
-            --popover-foreground: hsl(0, 0%, 10%);
-            --primary: hsl(223.81, 80%, 50%);
-            --primary-foreground: hsl(0, 0%, 100%);
-            --secondary: hsl(223.81, 20%, 90%);
-            --secondary-foreground: hsl(0, 0%, 10%);
-            --muted: hsl(223.81, 10%, 95%);
-            --muted-foreground: hsl(223.81, 0%, 40%);
-            --accent: hsl(223.81, 30%, 85%);
-            --accent-foreground: hsl(0, 0%, 10%);
-            --destructive: hsl(358.43, 74.91%, 59.75%);
-            --destructive-foreground: hsl(0, 0%, 100%);
-            --border: hsl(223.81, 10%, 85%);
-            --input: hsl(223.81, 10%, 90%);
-            --ring: hsl(223.81, 80%, 50%);
-            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            --font-serif: Georgia, serif;
-            --font-mono: 'Fira Code', monospace;
-            --radius: 0.75rem;
-            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.15);
-            --transition: all 0.3s ease;
-            --spacing: 1rem;
-        }
-
         * {
-            box-sizing: border-box;
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-
+        
         body {
-            font-family: var(--font-sans);
-            background-color: var(--background);
-            color: var(--foreground);
-            line-height: 1.7;
-            font-size: 16px;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
         }
-
+        
         .container {
-            max-width: 1280px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 0 var(--spacing);
+            padding: 20px;
         }
-
-        /* Header */
-        .header {
-            background-color: rgba(255, 255, 255, 0.9);
-            border-bottom: 1px solid var(--border);
-            padding: calc(var(--spacing) * 0.75) 0;
-            box-shadow: var(--shadow-sm);
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            backdrop-filter: blur(8px);
+        
+        header {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            padding: 30px 0;
+            text-align: center;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
-
-        .header-content {
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+        }
+        
+        .results-section {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .results-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
         }
-
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--primary);
-            text-decoration: none;
-            transition: var(--transition);
+        
+        .results-header h2 {
+            color: #2c3e50;
         }
-
-        .logo:hover {
-            transform: translateY(-2px);
-            color: hsl(223.81, 80%, 45%);
-        }
-
-        .header-buttons {
-            display: flex;
-            gap: calc(var(--spacing) * 0.75);
-            align-items: center;
-            position: relative;
-        }
-
-        .last-checked-container {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .last-checked-label {
-            color: var(--muted-foreground);
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-
-        .last-checked-time {
-            background-color: var(--primary);
-            color: var(--primary-foreground);
-            padding: 0.5rem 0.75rem;
-            border-radius: var(--radius);
-            font-size: 0.875rem;
-            border: none;
-            box-shadow: var(--shadow-sm);
-            transition: var(--transition);
-            font-weight: 500;
-        }
-
-        .notification-btn {
-            background: linear-gradient(135deg, hsl(142, 71%, 45%), hsl(142, 71%, 35%));
+        
+        .refresh-btn {
+            background-color: #3498db;
             color: white;
-            padding: 0.5rem 0.75rem;
-            border-radius: var(--radius);
-            font-size: 0.875rem;
             border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
             cursor: pointer;
-            transition: var(--transition);
-            box-shadow: var(--shadow-sm);
             font-weight: 500;
-            position: relative;
-            overflow: hidden;
+            transition: background-color 0.3s;
         }
-
-        .notification-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
+        
+        .refresh-btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .results-table {
             width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
+            border-collapse: collapse;
         }
-
-        .notification-btn:hover {
-            background: linear-gradient(135deg, hsl(142, 71%, 50%), hsl(142, 71%, 40%));
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
-        }
-
-        .notification-btn:hover::before {
-            left: 100%;
-        }
-
-        .notification-btn:active {
-            transform: translateY(0);
-        }
-
-        /* Modal for Notification Button */
-        .notification-modal {
-            display: none;
-            position: absolute;
-            top: calc(100% + 0.5rem);
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: var(--card);
-            color: var(--foreground);
-            padding: 0.5rem 1rem;
-            border-radius: calc(var(--radius) * 0.5);
-            font-size: 0.75rem;
-            font-weight: 500;
-            box-shadow: var(--shadow-md);
-            z-index: 20;
-            white-space: nowrap;
-            opacity: 0;
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-
-        .notification-modal.show {
-            display: block;
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-
-        @keyframes fadeInModal {
-            from { opacity: 0; transform: translateX(-50%) translateY(5px); }
-            to { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-
-        .notification-modal.show {
-            animation: fadeInModal 0.3s ease forwards;
-        }
-
-        /* Main Content */
-        .main-content {
-            padding: calc(var(--spacing) * 2) 0;
-        }
-
-        .intro {
-            text-align: center;
-            margin-bottom: calc(var(--spacing) * 2);
-            animation: fadeIn 0.5s ease;
-        }
-
-        .tagline {
-            font-size: 1.75rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: var(--foreground);
-        }
-
-        .description {
-            color: var(--muted-foreground);
-            font-size: 1rem;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        /* Tables */
-        .table-section {
-            margin-bottom: calc(var(--spacing) * 2);
-            background-color: var(--card);
-            padding: var(--spacing);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-md);
-            transition: var(--transition);
-        }
-
-        .table-section h2 {
-            margin-bottom: var(--spacing);
-            color: var(--foreground);
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            background-color: var(--card);
-            border-radius: var(--radius);
-            overflow: hidden;
-        }
-
-        th {
-            background-color: var(--muted);
-            color: var(--foreground);
-            padding: 0.75rem 1rem;
+        
+        .results-table th {
+            background-color: #f8f9fa;
             text-align: left;
+            padding: 12px 15px;
             font-weight: 600;
-            font-size: 0.875rem;
-            border-bottom: 1px solid var(--border);
+            color: #2c3e50;
+            border-bottom: 2px solid #e9ecef;
         }
-
-        td {
-            padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.875rem;
-            transition: var(--transition);
+        
+        .results-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e9ecef;
         }
-
-        tbody tr:last-child td {
-            border-bottom: none;
+        
+        .results-table tr:hover {
+            background-color: #f8f9fa;
         }
-
-        tbody tr:hover {
-            background-color: var(--accent);
-            cursor: pointer;
-        }
-
-        .no-data {
-            text-align: center;
-            color: var(--muted-foreground);
-            font-style: italic;
-            padding: 2rem;
-        }
-
-        /* Footer */
-        .footer {
-            background-color: var(--muted);
-            border-top: 1px solid var(--border);
-            padding: var(--spacing) 0;
-            text-align: center;
-            margin-top: calc(var(--spacing) * 3);
-        }
-
-        .footer a {
-            color: var(--primary);
-            text-decoration: none;
+        
+        .status-active {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #2ecc71;
+            color: white;
+            border-radius: 20px;
+            font-size: 0.8rem;
             font-weight: 500;
-            transition: var(--transition);
         }
-
-        .footer a:hover {
-            color: hsl(223.81, 80%, 45%);
-            text-decoration: underline;
+        
+        .actions-section {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            height: fit-content;
         }
-
-        /* Animations */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        
+        .actions-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
         }
-
-        /* Responsive Design */
+        
+        .trigger-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .form-group label {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .form-group input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        .trigger-btn {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: transform 0.2s;
+        }
+        
+        .trigger-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .trigger-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .message {
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
         @media (max-width: 768px) {
-            .header {
-                padding: calc(var(--spacing) * 0.5) 0;
+            .dashboard {
+                grid-template-columns: 1fr;
             }
-
-            .header-content {
-                flex-direction: column;
-                gap: calc(var(--spacing) * 0.5);
-                align-items: stretch;
-            }
-
-            .header-buttons {
-                flex-direction: column;
-                gap: 0.5rem;
-                width: 100%;
-                align-items: stretch;
-            }
-
-            .last-checked-container {
-                flex-direction: row;
-                justify-content: center;
-                gap: 0.5rem;
-                width: 100%;
-                text-align: center;
-            }
-
-            .last-checked-label {
-                font-size: 0.75rem;
-            }
-
-            .last-checked-time {
-                padding: 0.4rem 0.75rem;
-                font-size: 0.75rem;
-                flex-grow: 0;
-            }
-
-            .notification-btn {
-                padding: 0.4rem 0.75rem;
-                font-size: 0.75rem;
-                width: 100%;
-                text-align: center;
-            }
-
-            .notification-modal {
-                top: calc(100% + 0.4rem);
-                font-size: 0.7rem;
-                padding: 0.4rem 0.8rem;
-            }
-
-            .logo {
-                font-size: 1.25rem;
-                text-align: center;
-            }
-
-            .container {
-                padding: 0 0.75rem;
-            }
-
-            .tagline {
-                font-size: 1.5rem;
-            }
-
-            .description {
-                font-size: 0.875rem;
-            }
-
-            table {
-                font-size: 0.875rem;
-            }
-
-            th, td {
-                padding: 0.5rem 0.75rem;
-            }
-
-            .table-section {
-                padding: 0.75rem;
+            
+            h1 {
+                font-size: 2rem;
             }
         }
-
-        @media (max-width: 480px) {
-            .header {
-                padding: calc(var(--spacing) * 0.4) 0;
-            }
-
-            .logo {
-                font-size: 1.125rem;
-            }
-
-            .last-checked-label {
-                font-size: 0.7rem;
-            }
-
-            .last-checked-time {
-                font-size: 0.7rem;
-                padding: 0.3rem 0.6rem;
-            }
-
-            .notification-btn {
-                font-size: 0.7rem;
-                padding: 0.3rem 0.6rem;
-            }
-
-            .notification-modal {
-                font-size: 0.65rem;
-                padding: 0.3rem 0.6rem;
-            }
-
-            .tagline {
-                font-size: 1.25rem;
-            }
-
-            .description {
-                font-size: 0.75rem;
-            }
-
-            th, td {
-                font-size: 0.75rem;
-                padding: 0.4rem 0.5rem;
-            }
+        
+        .no-results {
+            text-align: center;
+            padding: 30px;
+            color: #7f8c8d;
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="container">
-            <div class="header-content">
-                <a href="/" class="logo">SPPU Result Tracker</a>
-                <div class="header-buttons">
-                    <div class="last-checked-container">
-                        <span class="last-checked-label">Last Checked:</span>
-                        <div class="last-checked-time">{{ created_at }}</div>
-                    </div>
-                    <button class="notification-btn" id="notification-btn">🔔 Allow Notifications</button>
-                    <div class="notification-modal" id="notification-modal">Coming Soon</div>
+    <div class="container">
+        <header>
+            <h1>SPPU Result Tracker</h1>
+            <p class="subtitle">Track the latest results from Savitribai Phule Pune University</p>
+        </header>
+        
+        <div class="dashboard">
+            <section class="results-section">
+                <div class="results-header">
+                    <h2>Latest Results</h2>
+                    <button class="refresh-btn" id="refreshBtn">Refresh</button>
                 </div>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="container">
-            <!-- Introduction -->
-            <div class="intro">
-                <h2 class="tagline">Real-time Result Monitoring</h2>
-                <p class="description">This website checks SPPU result website every <b>10 minutes</b> for the latest updates</p>
-            </div>
-
-            <!-- Latest Results -->
-            <div class="table-section">
-                <h2>Latest Results Announced</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Course Name</th>
-                            <th>Result Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if added %}
-                            {% for course in added %}
-                                <tr>
-                                    <td>{{ course.course_name }}</td>
-                                    <td>{{ course.result_date }}</td>
-                                </tr>
-                            {% endfor %}
-                        {% elif latest_results %}
-                            {% for course in latest_results %}
-                                <tr>
-                                    <td>{{ course.course_name }}</td>
-                                    <td>{{ course.result_date }}</td>
-                                </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr><td colspan="2" class="no-data">No new results added.</td></tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Removed Results (Only show if there are removed courses) -->
-            {% if removed %}
-            <div class="table-section">
-                <h2>Removed Results</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Course Name</th>
-                            <th>Result Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for course in removed %}
+                
+                <div id="resultsContainer">
+                    {% if results %}
+                    <table class="results-table">
+                        <thead>
                             <tr>
-                                <td>{{ course.course_name }}</td>
-                                <td>{{ course.result_date }}</td>
+                                <th>Course Name</th>
+                                <th>Result Date</th>
+                                <th>Last Seen</th>
+                                <th>Status</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% endif %}
-
-            <!-- Available Results -->
-            <div class="table-section">
-                <h2>Available Results</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Course Name</th>
-                            <th>Result Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for course in unchanged %}
+                        </thead>
+                        <tbody>
+                            {% for result in results %}
                             <tr>
-                                <td>{{ course.course_name }}</td>
-                                <td>{{ course.result_date }}</td>
+                                <td>{{ result.course_name }}</td>
+                                <td>{{ result.result_date }}</td>
+                                <td>{{ result.last_seen }}</td>
+                                <td><span class="status-active">Active</span></td>
                             </tr>
-                        {% else %}
-                            <tr><td colspan="2" class="no-data">No unchanged results.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="no-results">
+                        <p>No results available at the moment.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
         </div>
-    </main>
+        
+        <footer>
+            <p>SPPU Result Tracker &copy; 2023 | Data sourced from official SPPU results</p>
+        </footer>
+    </div>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <p><a href="#" target="_blank">View Source Code</a></p>
-        </div>
-    </footer>
-
-    <!-- JavaScript for Modal Toggle -->
     <script>
-        const notificationBtn = document.getElementById('notification-btn');
-        const notificationModal = document.getElementById('notification-modal');
-
-        // Desktop: Show/hide modal on hover
-        notificationBtn.addEventListener('mouseenter', () => {
-            notificationModal.classList.add('show');
-        });
-
-        notificationBtn.addEventListener('mouseleave', () => {
-            notificationModal.classList.remove('show');
-        });
-
-        // Mobile: Show/hide modal on touch
-        notificationBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Prevent default touch behavior
-            notificationModal.classList.add('show');
-        });
-
-        notificationBtn.addEventListener('touchend', () => {
-            setTimeout(() => {
-                notificationModal.classList.remove('show');
-            }, 1000); // Hide after 1 second for visibility
+        document.addEventListener('DOMContentLoaded', function() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            const triggerBtn = document.getElementById('triggerBtn');
+            const secretKeyInput = document.getElementById('secretKey');
+            const messageDiv = document.getElementById('message');
+            const resultsContainer = document.getElementById('resultsContainer');
+            
+            // Refresh results
+            refreshBtn.addEventListener('click', function() {
+                fetch('/api/results')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.results && data.results.length > 0) {
+                            let tableHTML = `
+                                <table class="results-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Course Name</th>
+                                            <th>Result Date</th>
+                                            <th>Last Seen</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                            `;
+                            
+                            data.results.forEach(result => {
+                                tableHTML += `
+                                    <tr>
+                                        <td>${result.course_name}</td>
+                                        <td>${result.result_date}</td>
+                                        <td>${result.last_seen}</td>
+                                        <td><span class="status-active">Active</span></td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            tableHTML += `
+                                    </tbody>
+                                </table>
+                            `;
+                            
+                            resultsContainer.innerHTML = tableHTML;
+                        } else {
+                            resultsContainer.innerHTML = `
+                                <div class="no-results">
+                                    <p>No results available at the moment.</p>
+                                </div>
+                            `;
+                        }
+                        
+                        showMessage('Results refreshed successfully!', 'success');
+                    })
+                    .catch(error => {
+                        console.error('Error fetching results:', error);
+                        showMessage('Failed to refresh results. Please try again.', 'error');
+                    });
+            });
+            
+            // Trigger workflow
+            triggerBtn.addEventListener('click', function() {
+                const secretKey = secretKeyInput.value.trim();
+                
+                if (!secretKey) {
+                    showMessage('Please enter a secret key.', 'error');
+                    return;
+                }
+                
+                triggerBtn.disabled = true;
+                triggerBtn.textContent = 'Triggering...';
+                
+                fetch('/api/trigger', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ key: secretKey })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (response.ok) {
+                        showMessage(data.message || 'Workflow triggered successfully!', 'success');
+                        secretKeyInput.value = '';
+                    } else {
+                        showMessage(data.error || 'Failed to trigger workflow', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error triggering workflow:', error);
+                    showMessage('Failed to trigger workflow. Please try again.', 'error');
+                })
+                .finally(() => {
+                    triggerBtn.disabled = false;
+                    triggerBtn.textContent = 'Trigger Workflow';
+                });
+            });
+            
+            // Show message function
+            function showMessage(text, type) {
+                messageDiv.textContent = text;
+                messageDiv.className = `message ${type}`;
+                messageDiv.style.display = 'block';
+                
+                // Hide message after 5 seconds
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 5000);
+            }
         });
     </script>
 </body>
