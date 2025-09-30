@@ -1,10 +1,5 @@
+psycopg2-binary
 requests
 beautifulsoup4
 python-dotenv
-pytz
-supabase
-certifi
 Flask
-requests
-python-dotenv
-psycopg2-binary

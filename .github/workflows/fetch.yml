@@ -1,7 +1,7 @@
-name: Fetch SPPU Results
+name: SPPU Fetch Results
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 jobs:
   fetch:
@@ -9,7 +9,7 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -20,12 +20,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run fetch script
+      - name: Run fetch & actions
         env:
-          URL: ${{ secrets.SUPABASE_URL }}
-          KEY: ${{ secrets.SUPABASE_KEY }}
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASS: ${{ secrets.DB_PASS }}
-        run: python api/fetch.py
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          python src/actions.py
