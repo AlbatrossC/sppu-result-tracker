@@ -55,123 +55,6 @@ def get_courses():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@app.route("/api/subscribe", methods=["POST"])
-def subscribe_to_course():
-    """Subscribe user to course notifications"""
-    try:
-        data = request.get_json()
-        onesignal_id = data.get('onesignal_id')
-        course_name = data.get('course_name')
-        
-        if not onesignal_id or not course_name:
-            return jsonify({"error": "Missing onesignal_id or course_name"}), 400
-
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        # Insert or update subscription
-        cur.execute("""
-            INSERT INTO subscriptions (user_id, course_name, push_subscription_json, active)
-            VALUES (%s, %s, %s, TRUE)
-            ON CONFLICT (user_id, course_name) 
-            DO UPDATE SET 
-                push_subscription_json = EXCLUDED.push_subscription_json,
-                active = TRUE,
-                updated_at = NOW()
-        """, (onesignal_id, course_name, json.dumps({"onesignal_id": onesignal_id})))
-        
-        conn.commit()
-        cur.close()
-        conn.close()
-        
-        return jsonify({"message": f"Subscribed to {course_name} successfully"})
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/send-notifications", methods=["POST"])
-def send_notifications():
-    """Send notifications for new results (called from your workflow)"""
-    try:
-        data = request.get_json()
-        if not data or data.get("key") != WORKFLOW_SECRET:
-            return jsonify({"error": "Unauthorized"}), 401
-
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        cur.execute("""
-            SELECT DISTINCT course_name 
-            FROM results_history 
-            WHERE notification_sent = FALSE
-        """)
-        courses_with_updates = [row['course_name'] for row in cur.fetchall()]
-        
-        notifications_sent = 0
-        
-        for course_name in courses_with_updates:
-            cur.execute("""
-                SELECT push_subscription_json 
-                FROM subscriptions 
-                WHERE course_name = %s AND active = TRUE
-            """, (course_name,))
-            
-            subscribers = cur.fetchall()
-            onesignal_ids = []
-            
-            for subscriber in subscribers:
-                if subscriber['push_subscription_json']:
-                    sub_data = json.loads(subscriber['push_subscription_json'])
-                    if 'onesignal_id' in sub_data:
-                        onesignal_ids.append(sub_data['onesignal_id'])
-            
-            # Send notification via OneSignal
-            if onesignal_ids and ONESIGNAL_REST_API_KEY:
-                headers = {
-                    "Content-Type": "application/json; charset=utf-8",
-                    "Authorization": f"Basic {ONESIGNAL_REST_API_KEY}"
-                }
-                
-                payload = {
-                    "app_id": ONESIGNAL_APP_ID,
-                    "include_player_ids": onesignal_ids,
-                    "headings": {"en": f"New Results Available!"},
-                    "contents": {"en": f"Results for {course_name} have been announced!"},
-                    "url": "https://yourdomain.com"
-                }
-                
-                try:
-                    response = requests.post(
-                        "https://onesignal.com/api/v1/notifications",
-                        headers=headers,
-                        json=payload
-                    )
-                    if response.status_code == 200:
-                        notifications_sent += len(onesignal_ids)
-                except Exception as e:
-                    print(f"Error sending notification: {e}")
-            
-            cur.execute("""
-                UPDATE results_history 
-                SET notification_sent = TRUE 
-                WHERE course_name = %s AND notification_sent = FALSE
-            """, (course_name,))
-        
-        conn.commit()
-        cur.close()
-        conn.close()
-        
-        return jsonify({
-            "message": f"Notifications processed for {len(courses_with_updates)} courses",
-            "notifications_sent": notifications_sent
-        })
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
 @app.route("/api/trigger", methods=["POST"])
 def trigger_workflow():
     """Trigger GitHub Actions workflow to fetch SPPU results"""
@@ -209,13 +92,6 @@ def trigger_workflow():
             "error": "Request failed",
             "details": str(e)
         }), 500
-
-
-@app.route('/OneSignalSDKWorker.js')
-def onesignal_worker():
-    """Serve OneSignal service worker"""
-    return send_from_directory('.', 'OneSignalSDKWorker.js')
-
 
 @app.route('/robots.txt')
 def robots():
