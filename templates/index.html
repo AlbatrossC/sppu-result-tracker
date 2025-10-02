@@ -4,385 +4,476 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SPPU Result Tracker</title>
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        
+
         body {
-            background-color: #f5f7fa;
-            color: #333;
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             padding: 20px;
         }
-        
-        header {
-            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
-            color: white;
-            padding: 30px 0;
-            text-align: center;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
-        
-        h1 {
-            font-size: 2.5rem;
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
             margin-bottom: 10px;
         }
-        
-        .subtitle {
-            font-size: 1.2rem;
+
+        .header p {
+            font-size: 1.2em;
             opacity: 0.9;
         }
-        
-        .dashboard {
-            display: grid;
-            grid-template-columns: 1fr 300px;
-            gap: 30px;
+
+        .content {
+            padding: 40px 30px;
         }
-        
-        .results-section {
-            background: white;
-            border-radius: 10px;
-            padding: 25px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-        }
-        
-        .results-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .results-header h2 {
-            color: #2c3e50;
-        }
-        
-        .refresh-btn {
-            background-color: #3498db;
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
             border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 8px;
             cursor: pointer;
-            font-weight: 500;
-            transition: background-color 0.3s;
-        }
-        
-        .refresh-btn:hover {
-            background-color: #2980b9;
-        }
-        
-        .results-table {
+            transition: transform 0.2s, box-shadow 0.2s;
             width: 100%;
-            border-collapse: collapse;
-        }
-        
-        .results-table th {
-            background-color: #f8f9fa;
-            text-align: left;
-            padding: 12px 15px;
-            font-weight: 600;
-            color: #2c3e50;
-            border-bottom: 2px solid #e9ecef;
-        }
-        
-        .results-table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #e9ecef;
-        }
-        
-        .results-table tr:hover {
-            background-color: #f8f9fa;
-        }
-        
-        .status-active {
-            display: inline-block;
-            padding: 5px 10px;
-            background-color: #2ecc71;
-            color: white;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-        
-        .actions-section {
-            background: white;
-            border-radius: 10px;
-            padding: 25px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-            height: fit-content;
-        }
-        
-        .actions-section h2 {
-            color: #2c3e50;
             margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #eee;
         }
-        
-        .trigger-form {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
         }
-        
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
-        
-        .form-group label {
-            font-weight: 500;
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 500px;
+            position: relative;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 15px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #7f8c8d;
+        }
+
+        .close:hover {
+            color: #e74c3c;
+        }
+
+        .modal h2 {
+            margin-bottom: 20px;
             color: #2c3e50;
         }
-        
-        .form-group input {
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 1rem;
+
+        .search-container {
+            position: relative;
+            margin-bottom: 20px;
         }
-        
-        .trigger-btn {
-            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 5px;
+
+        #courseSearch {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #bdc3c7;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        #courseSearch:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #bdc3c7;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1001;
+            display: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .dropdown-item {
+            padding: 12px 15px;
             cursor: pointer;
-            font-weight: 600;
-            font-size: 1rem;
-            transition: transform 0.2s;
+            border-bottom: 1px solid #ecf0f1;
+            transition: background-color 0.2s;
         }
-        
-        .trigger-btn:hover {
-            transform: translateY(-2px);
+
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
         }
-        
-        .trigger-btn:disabled {
-            background: #bdc3c7;
-            cursor: not-allowed;
-            transform: none;
+
+        .dropdown-item:last-child {
+            border-bottom: none;
         }
-        
-        .message {
+
+        .preview {
+            background: #f8f9fa;
             padding: 15px;
-            border-radius: 5px;
-            margin-top: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            border-left: 4px solid #667eea;
+        }
+
+        .hidden {
             display: none;
         }
-        
-        .message.success {
+
+        .status-message {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        .status-success {
             background-color: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
         }
-        
-        .message.error {
+
+        .status-error {
             background-color: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
-        
-        footer {
+
+        .status-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .footer {
             text-align: center;
-            margin-top: 40px;
             padding: 20px;
             color: #7f8c8d;
-            font-size: 0.9rem;
+            border-top: 1px solid #ecf0f1;
         }
-        
-        @media (max-width: 768px) {
-            .dashboard {
-                grid-template-columns: 1fr;
-            }
-            
-            h1 {
-                font-size: 2rem;
-            }
+
+        .info-section {
+            margin-top: 30px;
         }
-        
-        .no-results {
-            text-align: center;
-            padding: 30px;
-            color: #7f8c8d;
+
+        .info-section h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        .info-section ul {
+            margin-left: 20px;
+            margin-top: 10px;
+            line-height: 1.8;
+            color: #34495e;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>SPPU Result Tracker</h1>
-            <p class="subtitle">Track the latest results from Savitribai Phule Pune University</p>
-        </header>
-        
-        <div class="dashboard">
-            <section class="results-section">
-                <div class="results-header">
-                    <h2>Latest Results</h2>
-                    <button class="refresh-btn" id="refreshBtn">Refresh</button>
-                </div>
-                
-                <div id="resultsContainer">
-                    {% if results %}
-                    <table class="results-table">
-                        <thead>
-                            <tr>
-                                <th>Course Name</th>
-                                <th>Result Date</th>
-                                <th>Last Seen</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for result in results %}
-                            <tr>
-                                <td>{{ result.course_name }}</td>
-                                <td>{{ result.result_date }}</td>
-                                <td>{{ result.last_seen }}</td>
-                                <td><span class="status-active">Active</span></td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    {% else %}
-                    <div class="no-results">
-                        <p>No results available at the moment.</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </section>
+        <div class="header">
+            <h1>🎓 SPPU Result Tracker</h1>
+            <p>Get instant notifications when your course results are announced</p>
         </div>
-        
-        <footer>
-            <p>SPPU Result Tracker &copy; 2023 | Data sourced from official SPPU results</p>
-        </footer>
+
+        <div class="content">
+            <button class="btn-primary" onclick="openModal()">
+                🔔 Enable Notifications for Your Course
+            </button>
+
+            <div class="info-section">
+                <h3>How it works:</h3>
+                <ul>
+                    <li>Click the button above to get started</li>
+                    <li>Allow browser notifications when prompted</li>
+                    <li>Search and select your course</li>
+                    <li>Get instant alerts when results are announced</li>
+                    <li>Never miss important result updates</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2024 SPPU Result Tracker. Stay updated, stay ahead.</p>
+        </div>
+    </div>
+
+    <!-- Notification Modal -->
+    <div id="notificationModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Enable Course Notifications</h2>
+            
+            <div class="search-container">
+                <input type="text" id="courseSearch" placeholder="Search for your course..." autocomplete="off">
+                <div id="courseDropdown" class="dropdown"></div>
+            </div>
+
+            <div id="previewSection" class="preview hidden">
+                <p id="previewText">You will get notifications for: <strong id="selectedCourse"></strong></p>
+            </div>
+
+            <button id="confirmBtn" class="btn-primary" onclick="confirmSubscription()" disabled>
+                Confirm & Enable Notifications
+            </button>
+
+            <div id="statusMessage"></div>
+        </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const refreshBtn = document.getElementById('refreshBtn');
-            const triggerBtn = document.getElementById('triggerBtn');
-            const secretKeyInput = document.getElementById('secretKey');
-            const messageDiv = document.getElementById('message');
-            const resultsContainer = document.getElementById('resultsContainer');
-            
-            // Refresh results
-            refreshBtn.addEventListener('click', function() {
-                fetch('/api/results')
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.results && data.results.length > 0) {
-                            let tableHTML = `
-                                <table class="results-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Course Name</th>
-                                            <th>Result Date</th>
-                                            <th>Last Seen</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                            `;
-                            
-                            data.results.forEach(result => {
-                                tableHTML += `
-                                    <tr>
-                                        <td>${result.course_name}</td>
-                                        <td>${result.result_date}</td>
-                                        <td>${result.last_seen}</td>
-                                        <td><span class="status-active">Active</span></td>
-                                    </tr>
-                                `;
-                            });
-                            
-                            tableHTML += `
-                                    </tbody>
-                                </table>
-                            `;
-                            
-                            resultsContainer.innerHTML = tableHTML;
-                        } else {
-                            resultsContainer.innerHTML = `
-                                <div class="no-results">
-                                    <p>No results available at the moment.</p>
-                                </div>
-                            `;
-                        }
-                        
-                        showMessage('Results refreshed successfully!', 'success');
-                    })
-                    .catch(error => {
-                        console.error('Error fetching results:', error);
-                        showMessage('Failed to refresh results. Please try again.', 'error');
-                    });
+        // Global variables
+        let OneSignal;
+        let courses = [];
+        let selectedCourse = null;
+        let isOneSignalInitialized = false;
+
+        // Initialize OneSignal
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        OneSignalDeferred.push(async function(OneSignalInstance) {
+            OneSignal = OneSignalInstance;
+            await OneSignal.init({
+                appId: "3a51df75-de87-467e-9d37-267b2b130a68",
+                allowLocalhostAsSecureOrigin: true,
             });
-            
-            // Trigger workflow
-            triggerBtn.addEventListener('click', function() {
-                const secretKey = secretKeyInput.value.trim();
-                
-                if (!secretKey) {
-                    showMessage('Please enter a secret key.', 'error');
-                    return;
+            isOneSignalInitialized = true;
+            console.log('OneSignal initialized successfully');
+        });
+
+        // Modal functions
+        function openModal() {
+            document.getElementById('notificationModal').style.display = 'block';
+            loadCourses();
+        }
+
+        function closeModal() {
+            document.getElementById('notificationModal').style.display = 'none';
+            resetModal();
+        }
+
+        function resetModal() {
+            document.getElementById('courseSearch').value = '';
+            document.getElementById('courseDropdown').style.display = 'none';
+            document.getElementById('previewSection').classList.add('hidden');
+            document.getElementById('confirmBtn').disabled = true;
+            selectedCourse = null;
+        }
+
+        // Load courses from backend
+        async function loadCourses() {
+            try {
+                const response = await fetch('/api/courses');
+                if (response.ok) {
+                    courses = await response.json();
+                    console.log('Loaded courses:', courses.length);
+                } else {
+                    showStatus('Error loading courses', 'error');
                 }
-                
-                triggerBtn.disabled = true;
-                triggerBtn.textContent = 'Triggering...';
-                
-                fetch('/api/trigger', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ key: secretKey })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (response.ok) {
-                        showMessage(data.message || 'Workflow triggered successfully!', 'success');
-                        secretKeyInput.value = '';
-                    } else {
-                        showMessage(data.error || 'Failed to trigger workflow', 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error triggering workflow:', error);
-                    showMessage('Failed to trigger workflow. Please try again.', 'error');
-                })
-                .finally(() => {
-                    triggerBtn.disabled = false;
-                    triggerBtn.textContent = 'Trigger Workflow';
-                });
-            });
+            } catch (error) {
+                console.error('Error loading courses:', error);
+                showStatus('Error loading courses. Please try again.', 'error');
+            }
+        }
+
+        // Course search functionality
+        document.getElementById('courseSearch').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const dropdown = document.getElementById('courseDropdown');
             
-            // Show message function
-            function showMessage(text, type) {
-                messageDiv.textContent = text;
-                messageDiv.className = `message ${type}`;
-                messageDiv.style.display = 'block';
-                
-                // Hide message after 5 seconds
-                setTimeout(() => {
-                    messageDiv.style.display = 'none';
-                }, 5000);
+            if (searchTerm.length < 2) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            const filteredCourses = courses.filter(course => 
+                course.toLowerCase().includes(searchTerm)
+            );
+
+            if (filteredCourses.length > 0) {
+                dropdown.innerHTML = filteredCourses.map(course => 
+                    `<div class="dropdown-item" onclick="selectCourse(\`${course}\`)">${course}</div>`
+                ).join('');
+                dropdown.style.display = 'block';
+            } else {
+                dropdown.innerHTML = '<div class="dropdown-item">No courses found</div>';
+                dropdown.style.display = 'block';
             }
         });
+
+        // Select course
+        function selectCourse(course) {
+            selectedCourse = course;
+            document.getElementById('courseSearch').value = course;
+            document.getElementById('courseDropdown').style.display = 'none';
+            document.getElementById('selectedCourse').textContent = course;
+            document.getElementById('previewSection').classList.remove('hidden');
+            document.getElementById('confirmBtn').disabled = false;
+        }
+
+        // Confirm subscription
+        async function confirmSubscription() {
+            if (!selectedCourse) {
+                showStatus('Please select a course', 'error');
+                return;
+            }
+
+            const confirmBtn = document.getElementById('confirmBtn');
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = 'Processing...';
+
+            try {
+                // Check if OneSignal is initialized
+                if (!isOneSignalInitialized) {
+                    showStatus('OneSignal is still initializing. Please wait...', 'info');
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'Confirm & Enable Notifications';
+                    return;
+                }
+
+                // Request notification permission
+                showStatus('Requesting notification permission...', 'info');
+                
+                const permission = await OneSignal.Notifications.requestPermission();
+                
+                if (permission) {
+                    showStatus('Permission granted! Getting subscription ID...', 'info');
+                    
+                    // Get OneSignal subscription ID
+                    const subscriptionId = await OneSignal.User.PushSubscription.id;
+                    
+                    if (!subscriptionId) {
+                        showStatus('Could not get subscription ID. Please try again.', 'error');
+                        confirmBtn.disabled = false;
+                        confirmBtn.textContent = 'Confirm & Enable Notifications';
+                        return;
+                    }
+
+                    console.log('OneSignal Subscription ID:', subscriptionId);
+
+                    // Send subscription to backend
+                    const response = await fetch('/api/subscribe', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            onesignal_id: subscriptionId,
+                            course_name: selectedCourse
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        showStatus(`✅ ${data.message}`, 'success');
+                        setTimeout(() => {
+                            closeModal();
+                        }, 2000);
+                    } else {
+                        const error = await response.json();
+                        showStatus(error.error || 'Subscription failed', 'error');
+                        confirmBtn.disabled = false;
+                        confirmBtn.textContent = 'Confirm & Enable Notifications';
+                    }
+                } else {
+                    showStatus('Notification permission denied. Please enable notifications in your browser settings.', 'error');
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'Confirm & Enable Notifications';
+                }
+            } catch (error) {
+                console.error('Subscription error:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Confirm & Enable Notifications';
+            }
+        }
+
+        // Show status message
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.innerHTML = `<div class="status-message status-${type}">${message}</div>`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusDiv.innerHTML = '';
+                }, 5000);
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('notificationModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
     </script>
 </body>
 </html>
