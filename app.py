@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime
+from pywebpush import webpush, WebPushException
 
 load_dotenv()
 
@@ -17,43 +18,24 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 # Renamed secrets for better security
 WORKFLOW_SECRET = os.getenv("WORKFLOW_SECRET")
 GH_API_TOKEN = os.getenv("GH_API_TOKEN")
-ONESIGNAL_APP_ID = os.getenv("ONESIGNAL_APP_ID", "3a51df75-de87-467e-9d37-267b2b130a68")
-ONESIGNAL_REST_API_KEY = os.getenv("ONESIGNAL_REST_API_KEY")
+
+# VAPID keys for Web Push
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY")
+VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY")
+VAPID_CLAIMS = {"sub": os.getenv("VAPID_CLAIMS_EMAIL", "mailto:your-email@example.com")}
 
 REPO_NAME = "AlbatrossC/sppu-result-tracker"
 WORKFLOW_FILE = "fetch.yml"
 REF_BRANCH = "main"
 
-
 def get_db_connection():
     """Create a database connection"""
     return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-
 
 @app.route("/")
 def index():
     """Serve the main page"""
     return render_template('index.html')
-
-
-@app.route("/api/courses")
-def get_courses():
-    """Get list of available courses from results table"""
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT DISTINCT course_name 
-            FROM results 
-            WHERE is_active = TRUE 
-            ORDER BY course_name
-        """)
-        courses = [row['course_name'] for row in cur.fetchall()]
-        cur.close()
-        conn.close()
-        return jsonify(courses)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/trigger", methods=["POST"])
 def trigger_workflow():
@@ -97,6 +79,5 @@ def trigger_workflow():
 def robots():
     return send_from_directory('.', 'robots.txt')
 
-
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
