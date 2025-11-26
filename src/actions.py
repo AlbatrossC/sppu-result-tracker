@@ -1,31 +1,27 @@
-# actions.py
 import extract
 import parse
 import database
-from io import StringIO
 
 def run_workflow():
-    print("🔹 Starting centralized workflow...\n" + "="*50)
+    print("Starting workflow...\n" + "="*60)
 
-    # Step 1: Extract HTML
-    html_content = extract.fetch_html()
-    if not html_content:
-        print("Failed to fetch HTML. Exiting workflow.")
+    html = extract.fetch_html()
+    if not html:
+        print("Failed to fetch HTML.")
         return
+    print("Fetched HTML.")
 
-    # Step 2: Parse HTML to JSON
-    json_data = parse.parse_html_content(html_content)
-    print(f"✅ Parsed {len(json_data)} records from HTML")
-
-    if not json_data:
-        print("No valid data parsed. Exiting workflow.")
+    scraped = parse.parse_html_content(html)
+    if not scraped:
+        print("Parsed 0 items.")
         return
+    print(f"Parsed {len(scraped)} records.")
 
-    # Step 3: Sync with database
-    database.sync_database(json_data)
+    print("Syncing database...")
+    database.sync_database(scraped)
+    print("Database sync complete.")
 
-    print("🔹 Workflow completed successfully!\n" + "="*50)
-
+    print("\nWorkflow finished.\n" + "="*60)
 
 if __name__ == "__main__":
     run_workflow()

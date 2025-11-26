@@ -1,16 +1,12 @@
 import os
 import psycopg2
 from psycopg2.extras import execute_batch
-from datetime import datetime
 from dotenv import load_dotenv
 
-# Load environment
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Parse date safely
 def parse_date(date_str: str) -> str:
-    """Convert '25- August- 2025' → '2025-08-25'"""
     months = {
         'january': '01', 'jan': '01', 'february': '02', 'feb': '02',
         'march': '03', 'mar': '03', 'april': '04', 'apr': '04',
@@ -27,103 +23,100 @@ def parse_date(date_str: str) -> str:
             year = parts[2]
             if month:
                 return f"{year}-{month}-{day}"
-    except Exception as e:
-        print(f"⚠️ Error parsing date '{date_str}': {e}")
+    except:
+        pass
     return None
 
-
 def sync_database(json_data: list):
-    """Sync scraper JSON with results + results_history in one transaction."""
     if not json_data:
-        print("⚠️ No data provided to sync")
+        print("No data to sync.")
         return
 
     conn = psycopg2.connect(DATABASE_URL)
     cursor = conn.cursor()
-    stats = {"added": 0, "removed": 0, "unchanged": 0}
 
     try:
-        # Prepare scraper data
-        json_records = {}
+        cursor.execute("TRUNCATE latest_scrape")
+
+        latest = []
         for item in json_data:
-            course_name = item.get("course_name", "").strip()
-            date_str = item.get("result_date", "").strip()
-            parsed_date = parse_date(date_str)
-            if course_name and parsed_date:
-                json_records[(course_name, parsed_date)] = True
+            name = item.get("course_name", "").strip()
+            raw = item.get("result_date", "").strip()
+            d = parse_date(raw)
+            if name and d:
+                latest.append((name, d))
 
-        # Fetch current active records
-        cursor.execute("""
-            SELECT id, course_name, result_date::text 
-            FROM results WHERE is_active=TRUE
-        """)
-        existing_records = {(row[1], row[2]): row[0] for row in cursor.fetchall()}
-
-        json_keys = set(json_records.keys())
-        existing_keys = set(existing_records.keys())
-
-        to_add = json_keys - existing_keys
-        to_remove = existing_keys - json_keys
-        to_update = json_keys & existing_keys
-
-        # -------------------
-        # Insert new results
-        # -------------------
-        if to_add:
+        if latest:
             execute_batch(cursor, """
-                INSERT INTO results (course_name, result_date, last_seen, is_active)
-                VALUES (%s, %s, NOW(), TRUE)
-                ON CONFLICT (course_name, result_date)
-                DO UPDATE SET last_seen=NOW(), is_active=TRUE
-            """, [(c, d) for c, d in to_add], page_size=100)
+                INSERT INTO latest_scrape (course_name, result_date)
+                VALUES (%s, %s)
+            """, latest, page_size=100)
 
+        cursor.execute("SELECT course_name, result_date::text FROM previous_results")
+        prev = {(row[0], row[1]) for row in cursor.fetchall()}
+
+        cursor.execute("SELECT course_name, result_date::text FROM latest_scrape")
+        now = {(row[0], row[1]) for row in cursor.fetchall()}
+
+        new_items = now - prev
+        removed_items = prev - now
+        maybe_updated = now & prev
+
+        updates = []
+        for name, _ in maybe_updated:
+            cursor.execute("""
+                SELECT p.result_date::text, l.result_date::text
+                FROM previous_results p
+                JOIN latest_scrape l ON p.course_name=l.course_name
+                WHERE p.course_name=%s
+            """, (name,))
+            row = cursor.fetchone()
+            if row and row[0] != row[1]:
+                updates.append((name, row[0], row[1]))
+
+        if new_items:
             execute_batch(cursor, """
-                INSERT INTO results_history (course_name, result_date, change_type, notification_sent)
-                VALUES (%s, %s, 'added', FALSE)
-            """, [(c, d) for c, d in to_add], page_size=100)
-
-            stats["added"] = len(to_add)
-
-        # -------------------
-        # Update unchanged rows (refresh last_seen)
-        # -------------------
-        if to_update:
-            execute_batch(cursor, """
-                UPDATE results SET last_seen=NOW(), is_active=TRUE
-                WHERE course_name=%s AND result_date=%s
-            """, [(c, d) for c, d in to_update], page_size=100)
-
-            stats["unchanged"] = len(to_update)
-
-        # -------------------
-        # Handle removed results
-        # -------------------
-        if to_remove:
-            execute_batch(cursor, """
-                UPDATE results SET is_active=FALSE, last_seen=NOW()
-                WHERE course_name=%s AND result_date=%s
-            """, [(c, d) for c, d in to_remove], page_size=100)
+                INSERT INTO notifications (event_type, course_name, old_date, new_date)
+                VALUES ('new', %s, NULL, %s)
+            """, [(n, d) for n, d in new_items], page_size=100)
 
             execute_batch(cursor, """
-                INSERT INTO results_history (course_name, result_date, change_type, notification_sent)
-                VALUES (%s, %s, 'removed', FALSE)
-            """, [(c, d) for c, d in to_remove], page_size=100)
+                INSERT INTO history (course_name, result_date)
+                VALUES (%s, %s)
+            """, [(n, d) for n, d in new_items], page_size=100)
 
-            stats["removed"] = len(to_remove)
+        if updates:
+            execute_batch(cursor, """
+                INSERT INTO notifications (event_type, course_name, old_date, new_date)
+                VALUES ('updated', %s, %s, %s)
+            """, [(n, o, nw) for n, o, nw in updates], page_size=100)
+
+            execute_batch(cursor, """
+                INSERT INTO history (course_name, result_date)
+                VALUES (%s, %s)
+            """, [(n, nw) for n, _, nw in updates], page_size=100)
+
+        if removed_items:
+            execute_batch(cursor, """
+                INSERT INTO notifications (event_type, course_name, old_date, new_date)
+                VALUES ('removed', %s, %s, NULL)
+            """, [(n, d) for n, d in removed_items], page_size=100)
+
+        cursor.execute("TRUNCATE previous_results")
+
+        execute_batch(cursor, """
+            INSERT INTO previous_results (course_name, result_date)
+            VALUES (%s, %s)
+        """, list(now), page_size=100)
+
+        cursor.execute("TRUNCATE latest_scrape")
 
         conn.commit()
-        print(f"✅ Database sync complete: {stats}")
+        print("Sync complete.")
 
     except Exception as e:
         conn.rollback()
-        print(f"❌ Error syncing database: {e}")
+        print("Error syncing:", e)
     finally:
         cursor.close()
         conn.close()
-
-
-if __name__ == "__main__":
-    import json
-    with open("sppu_subjects.json", "r", encoding="utf-8") as f:
-        data = json.load(f)
-    sync_database(data)
