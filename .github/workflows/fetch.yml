@@ -20,8 +20,13 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run fetch & actions
+      - name: Run scraper & DB actions
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: |
-          python src/actions.py
+        run: python src/actions.py
+
+      - name: Send Discord Notifications
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python src/notify.py
