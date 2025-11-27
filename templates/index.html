@@ -3,466 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SPPU Result Notifications</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+    <title>SPPU Result Tracker</title>
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        
-        .container {
-            background: white;
+            font-family: Arial, sans-serif;
+            background: #f4f5f7;
             padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
-            width: 100%;
         }
-        
+
         h1 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 28px;
             text-align: center;
         }
-        
-        .subtitle {
-            color: #666;
-            text-align: center;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-        
-        .form-group {
-            margin-bottom: 25px;
-        }
-        
-        label {
-            display: block;
-            color: #555;
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-        
-        .select2-container {
-            width: 100% !important;
-        }
-        
-        .select2-container--default .select2-selection--single {
-            height: 45px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-        }
-        
-        .select2-container--default .select2-selection--single .select2-selection__rendered {
-            line-height: 45px;
-            padding-left: 15px;
-            color: #333;
-        }
-        
-        .select2-container--default .select2-selection--single .select2-selection__arrow {
-            height: 45px;
-        }
-        
-        .btn {
-            width: 100%;
-            padding: 15px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 10px;
-        }
-        
-        .btn-subscribe {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        
-        .btn-subscribe:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
-        }
-        
-        .btn-notify {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
-        }
-        
-        .btn-notify:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(245, 87, 108, 0.4);
-        }
-        
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .message {
-            padding: 12px;
-            border-radius: 8px;
-            margin-top: 15px;
-            font-size: 14px;
-            display: none;
-        }
-        
-        .message.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .message.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        
-        .status {
-            text-align: center;
+
+        table {
             margin-top: 20px;
-            padding: 10px;
-            background: #f8f9fa;
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
             border-radius: 8px;
-            font-size: 13px;
-            color: #666;
+            overflow: hidden;
         }
-        
-        .permission-info {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 13px;
-            display: none;
+
+        th, td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #2d3436;
+            color: white;
+        }
+
+        tr:hover {
+            background: #f1f1f1;
+        }
+
+        #loading {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 18px;
         }
     </style>
+
 </head>
 <body>
-    <div class="container">
-        <h1>📚 SPPU Results Tracker</h1>
-        <p class="subtitle">Subscribe to get instant notifications</p>
-        
-        <div class="permission-info" id="permissionInfo">
-            ⚠️ Please enable notifications in your browser to receive updates.
-        </div>
-        
-        <div class="form-group">
-            <label for="courseSelect">Select Your Course</label>
-            <select id="courseSelect" class="course-select">
-                <option value="">Loading courses...</option>
-            </select>
-        </div>
-        
-        <button class="btn btn-subscribe" id="subscribeBtn" disabled>
-            🔔 Subscribe to Notifications
-        </button>
-        
-        <button class="btn btn-notify" id="notifyBtn" disabled>
-            📤 Send Notification (Admin)
-        </button>
-        
-        <div class="message" id="message"></div>
-        
-        <div class="status" id="status">
-            <span id="statusText">Select a course to continue</span>
-        </div>
-    </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+    <h1>📢 Latest SPPU Results</h1>
+
+    <div id="loading">Loading results...</div>
+
+    <table id="resultsTable" style="display:none;">
+        <thead>
+            <tr>
+                <th>Course Name</th>
+                <th>Result Date</th>
+                <th>Last Seen</th>
+                <th>Active?</th>
+            </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+    </table>
+
     <script>
-        let vapidPublicKey = '';
-        let selectedCourse = '';
-        let userId = '';
-        let isServiceWorkerRegistered = false;
-        
-        // Generate or retrieve user ID
-        function getUserId() {
-            let id = localStorage.getItem('userId');
-            if (!id) {
-                id = 'user_' + Math.random().toString(36).substr(2, 9);
-                localStorage.setItem('userId', id);
-            }
-            return id;
-        }
-        
-        // Convert VAPID key
-        function urlBase64ToUint8Array(base64String) {
-            const padding = '='.repeat((4 - base64String.length % 4) % 4);
-            const base64 = (base64String + padding)
-                .replace(/\-/g, '+')
-                .replace(/_/g, '/');
-            const rawData = window.atob(base64);
-            const outputArray = new Uint8Array(rawData.length);
-            for (let i = 0; i < rawData.length; ++i) {
-                outputArray[i] = rawData.charCodeAt(i);
-            }
-            return outputArray;
-        }
-        
-        // Show message
-        function showMessage(text, type) {
-            const messageEl = document.getElementById('message');
-            messageEl.textContent = text;
-            messageEl.className = 'message ' + type;
-            messageEl.style.display = 'block';
-            setTimeout(() => {
-                messageEl.style.display = 'none';
-            }, 5000);
-        }
-        
-        // Update status
-        function updateStatus(text) {
-            document.getElementById('statusText').textContent = text;
-        }
-        
-        // Register service worker
-        async function registerServiceWorker() {
-            if (!('serviceWorker' in navigator)) {
-                showMessage('Service workers are not supported in this browser', 'error');
-                return false;
-            }
-            
-            try {
-                const registration = await navigator.serviceWorker.register('/sw.js');
-                console.log('Service Worker registered successfully:', registration);
-                isServiceWorkerRegistered = true;
-                return true;
-            } catch (error) {
-                console.error('Service Worker registration failed:', error);
-                showMessage('Failed to register service worker: ' + error.message, 'error');
-                return false;
-            }
-        }
-        
-        // Check and request notification permission
-        async function checkNotificationPermission() {
-            if (!('Notification' in window)) {
-                showMessage('This browser does not support notifications', 'error');
-                return false;
-            }
-            
-            // First, ensure service worker is registered
-            if (!isServiceWorkerRegistered) {
-                const registered = await registerServiceWorker();
-                if (!registered) {
-                    return false;
-                }
-            }
-            
-            if (Notification.permission === 'denied') {
-                document.getElementById('permissionInfo').style.display = 'block';
-                showMessage('Notifications are blocked. Please enable them in browser settings.', 'error');
-                return false;
-            }
-            
-            if (Notification.permission === 'default') {
-                // Show info message
-                document.getElementById('permissionInfo').style.display = 'block';
-                showMessage('Please allow notifications to receive result updates', 'info');
-                
-                // Don't request permission automatically - wait for user to click subscribe
-                return false;
-            }
-            
-            // Permission already granted
-            if (Notification.permission === 'granted') {
-                showMessage('Notifications are enabled ✓', 'success');
-                return true;
-            }
-            
-            return false;
-        }
-        
-        // Request notification permission and subscribe
-        async function subscribeToNotifications() {
-            try {
-                // First ensure service worker is ready
-                if (!isServiceWorkerRegistered) {
-                    const registered = await registerServiceWorker();
-                    if (!registered) {
-                        return;
-                    }
-                }
-                
-                // Request permission if not already granted
-                if (Notification.permission === 'default') {
-                    const permission = await Notification.requestPermission();
-                    if (permission !== 'granted') {
-                        showMessage('Notification permission denied. Cannot subscribe.', 'error');
-                        return;
-                    } else {
-                        document.getElementById('permissionInfo').style.display = 'none';
-                        showMessage('Notifications enabled!', 'success');
-                    }
-                } else if (Notification.permission === 'denied') {
-                    showMessage('Notifications are blocked. Please enable them in browser settings.', 'error');
-                    return;
-                }
-                
-                // Get service worker registration
-                const registration = await navigator.serviceWorker.ready;
-                
-                // Subscribe to push
-                const subscription = await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+        fetch("/api/results")
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById("resultsBody");
+                const table = document.getElementById("resultsTable");
+                const loader = document.getElementById("loading");
+
+                loader.style.display = "none";
+                table.style.display = "table";
+
+                data.forEach(r => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td>${r.course_name}</td>
+                        <td>${r.result_date}</td>
+                        <td>${r.last_seen}</td>
+                        <td>${r.is_active ? "Yes" : "No"}</td>
+                    `;
+                    tbody.appendChild(tr);
                 });
-                
-                // Send subscription to server
-                const response = await fetch('/api/subscribe', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        user_id: userId,
-                        course_name: selectedCourse,
-                        subscription: subscription.toJSON()
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    showMessage('Successfully subscribed to ' + selectedCourse + ' notifications!', 'success');
-                    updateStatus('Subscribed to: ' + selectedCourse);
-                } else {
-                    showMessage('Failed to subscribe: ' + data.error, 'error');
-                }
-                
-            } catch (error) {
-                console.error('Subscription error:', error);
-                showMessage('Error: ' + error.message, 'error');
-            }
-        }
-        
-        // Send notification (admin function)
-        async function sendNotification() {
-            try {
-                const response = await fetch('/api/send-notification', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        course_name: selectedCourse
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    showMessage(`Sent to ${data.successful} subscribers`, 'success');
-                } else {
-                    showMessage(data.message || 'Failed to send notifications', 'info');
-                }
-                
-            } catch (error) {
-                console.error('Send error:', error);
-                showMessage('Error: ' + error.message, 'error');
-            }
-        }
-        
-        // Load courses
-        async function loadCourses() {
-            try {
-                const response = await fetch('/api/courses');
-                const courses = await response.json();
-                
-                const select = $('#courseSelect');
-                select.empty();
-                select.append('<option value="">-- Select a course --</option>');
-                
-                courses.forEach(course => {
-                    select.append(`<option value="${course}">${course}</option>`);
-                });
-                
-                select.select2({
-                    placeholder: 'Search and select a course',
-                    allowClear: true
-                });
-                
-            } catch (error) {
-                console.error('Error loading courses:', error);
-                showMessage('Failed to load courses', 'error');
-            }
-        }
-        
-        // Initialize
-        async function init() {
-            userId = getUserId();
-            
-            // Get VAPID public key
-            try {
-                const response = await fetch('/api/vapid-public-key');
-                const data = await response.json();
-                vapidPublicKey = data.publicKey;
-            } catch (error) {
-                console.error('Error fetching VAPID key:', error);
-                showMessage('Failed to initialize notifications', 'error');
-            }
-            
-            // Load courses
-            await loadCourses();
-            
-            // Register service worker (but don't request permission yet)
-            await registerServiceWorker();
-            
-            // Check current permission status
-            await checkNotificationPermission();
-            
-            // Course selection handler
-            $('#courseSelect').on('change', function() {
-                selectedCourse = $(this).val();
-                if (selectedCourse) {
-                    document.getElementById('subscribeBtn').disabled = false;
-                    document.getElementById('notifyBtn').disabled = false;
-                    updateStatus('Selected: ' + selectedCourse);
-                } else {
-                    document.getElementById('subscribeBtn').disabled = true;
-                    document.getElementById('notifyBtn').disabled = true;
-                    updateStatus('Select a course to continue');
-                }
+            })
+            .catch(err => {
+                document.getElementById("loading").innerText = "Failed to load data.";
             });
-            
-            // Subscribe button
-            document.getElementById('subscribeBtn').addEventListener('click', subscribeToNotifications);
-            
-            // Notify button
-            document.getElementById('notifyBtn').addEventListener('click', sendNotification);
-        }
-        
-        // Start when DOM is ready
-        $(document).ready(init);
     </script>
+
 </body>
 </html>
