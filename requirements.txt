@@ -4,4 +4,4 @@ requests
 beautifulsoup4
 python-dotenv
 pywebpush==1.14.0
-cryptography
+cryptography<46
