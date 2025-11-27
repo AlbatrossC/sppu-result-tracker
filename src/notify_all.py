@@ -8,7 +8,7 @@ from pywebpush import webpush, WebPushException
 # ENV Variables
 DATABASE_URL = os.getenv("DATABASE_URL")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL")
-VAPID_PUBLIC = os.getenv("VAPID_PUBLIC_KEY")
+VAPID_PUBLIC = os.getenv("VAPID_PUBLIC_KEY")      # still needed only for frontend subscription
 VAPID_PRIVATE = os.getenv("VAPID_PRIVATE_KEY")
 VAPID_EMAIL = os.getenv("VAPID_EMAIL")
 
@@ -50,10 +50,10 @@ def send_push(subscription, data_json):
             },
             data=data_json,
             vapid_private_key=VAPID_PRIVATE,
-            vapid_public_key=VAPID_PUBLIC,     # ✅ ADDED (required)
             vapid_claims={"sub": VAPID_EMAIL}
         )
         print("✓ Web Push sent →", subscription["endpoint"][:40])
+
     except WebPushException as e:
         print("❌ Web Push failed:", e)
 
@@ -73,6 +73,8 @@ def process():
         ORDER BY id ASC;
     """)
     rows = cur.fetchall()
+
+    {}
 
     if not rows:
         print("No notifications to process.")
