@@ -43,10 +43,14 @@ def send_push(subscription, data_json):
         webpush(
             subscription_info={
                 "endpoint": subscription["endpoint"],
-                "keys": {"p256dh": subscription["p256dh"], "auth": subscription["auth"]}
+                "keys": {
+                    "p256dh": subscription["p256dh"],
+                    "auth": subscription["auth"]
+                }
             },
             data=data_json,
             vapid_private_key=VAPID_PRIVATE,
+            vapid_public_key=VAPID_PUBLIC,     # ✅ ADDED (required)
             vapid_claims={"sub": VAPID_EMAIL}
         )
         print("✓ Web Push sent →", subscription["endpoint"][:40])
