@@ -8,7 +8,7 @@ from pywebpush import webpush, WebPushException
 # ENV Variables
 DATABASE_URL = os.getenv("DATABASE_URL")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL")
-VAPID_PUBLIC = os.getenv("VAPID_PUBLIC_KEY")      # still needed only for frontend subscription
+VAPID_PUBLIC = os.getenv("VAPID_PUBLIC_KEY")      # needed for frontend only
 VAPID_PRIVATE = os.getenv("VAPID_PRIVATE_KEY")
 VAPID_EMAIL = os.getenv("VAPID_EMAIL")
 
@@ -74,8 +74,6 @@ def process():
     """)
     rows = cur.fetchall()
 
-    {}
-
     if not rows:
         print("No notifications to process.")
         return
@@ -122,6 +120,7 @@ def process():
             WHERE id = %s;
         """, (row["id"],))
         conn.commit()
+
         print(f"✓ Marked as sent → ID {row['id']}")
 
     cur.close()
