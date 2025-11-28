@@ -3,5 +3,5 @@ psycopg2-binary
 requests
 beautifulsoup4
 python-dotenv
-pywebpush==1.14.0
+PyJWT
 cryptography<46

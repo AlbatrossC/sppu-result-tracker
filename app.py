@@ -5,7 +5,6 @@ from dotenv import load_dotenv
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from pywebpush import webpush, WebPushException
 
 load_dotenv()
 
@@ -13,10 +12,6 @@ app = Flask(__name__)
 
 # ENV Variables
 DATABASE_URL = os.getenv("DATABASE_URL")
-VAPID_PUBLIC = os.getenv("VAPID_PUBLIC_KEY")
-VAPID_PRIVATE = os.getenv("VAPID_PRIVATE_KEY")
-VAPID_EMAIL = os.getenv("VAPID_EMAIL")
-
 WORKFLOW_SECRET = os.getenv("WORKFLOW_SECRET")
 GH_API_TOKEN = os.getenv("GH_API_TOKEN")
 
@@ -59,37 +54,32 @@ def get_results():
         return jsonify({"error": str(e)}), 500
 
 
-# 🔹 NEW — Return VAPID public key
-@app.route("/api/public-key")
-def public_key():
-    return jsonify({"publicKey": VAPID_PUBLIC})
-
-
-# 🔹 NEW — Save push subscription
-@app.route("/api/subscribe", methods=["POST"])
-def subscribe():
+# 🔹 NEW — Register FCM token
+@app.route("/api/register-fcm", methods=["POST"])
+def register_fcm():
     data = request.json
-    endpoint = data["endpoint"]
-    p256dh = data["keys"]["p256dh"]
-    auth_key = data["keys"]["auth"]
+    token = data.get("token")
+
+    if not token:
+        return jsonify({"error": "Missing token"}), 400
 
     conn = get_db()
     cur = conn.cursor()
 
     cur.execute("""
-        INSERT INTO push_subscriptions (endpoint, p256dh, auth)
-        VALUES (%s, %s, %s)
-        ON CONFLICT (endpoint) DO NOTHING;
-    """, (endpoint, p256dh, auth_key))
+        INSERT INTO fcm_tokens (token)
+        VALUES (%s)
+        ON CONFLICT (token) DO NOTHING;
+    """, (token,))
 
     conn.commit()
     cur.close()
     conn.close()
 
-    return jsonify({"message": "Subscribed"}), 201
+    return jsonify({"message": "Token saved"}), 201
 
 
-# 🔹 GitHub trigger (unchanged)
+# 🔹 GitHub Action trigger (unchanged)
 @app.route("/api/trigger", methods=["POST"])
 def trigger_workflow():
     data = request.get_json()
@@ -125,9 +115,10 @@ def trigger_workflow():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/service-worker.js")
-def sw():
-    return send_from_directory(".", "service-worker.js")
+# 🔹 Firebase service worker file
+@app.route("/firebase-messaging-sw.js")
+def firebase_sw():
+    return send_from_directory(".", "firebase-messaging-sw.js")
 
 
 @app.route("/robots.txt")

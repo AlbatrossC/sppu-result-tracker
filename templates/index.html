@@ -11,13 +11,11 @@
             background: #f4f5f7;
             padding: 40px;
         }
-
         h1 { text-align: center; }
 
         #notifyBtn {
             display: block;
-            margin: 0 auto;
-            margin-top: 15px;
+            margin: 20px auto;
             padding: 12px 20px;
             background: #0984e3;
             color: white;
@@ -26,7 +24,6 @@
             cursor: pointer;
             font-size: 16px;
         }
-
         #notifyBtn:hover { background: #0077c2; }
 
         table {
@@ -42,14 +39,11 @@
             padding: 12px 10px;
             border-bottom: 1px solid #ddd;
         }
-
         th {
             background: #2d3436;
             color: white;
         }
-
         tr:hover { background: #f1f1f1; }
-
         #loading {
             margin-top: 30px;
             text-align: center;
@@ -78,9 +72,57 @@
     <tbody id="resultsBody"></tbody>
 </table>
 
+
+<!-- Firebase Scripts -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+    import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-messaging.js";
+
+    // Your Firebase Config
+    const firebaseConfig = {
+        apiKey: "AIzaSyACkJ8BkOMwELdo-y1e4uu2HDEiU09xZ8I",
+        authDomain: "sppu-result-tracker.firebaseapp.com",
+        projectId: "sppu-result-tracker",
+        storageBucket: "sppu-result-tracker.firebasestorage.app",
+        messagingSenderId: "643791611590",
+        appId: "1:643791611590:web:d641fbab6e77a4c88959c7"
+    };
+
+    // Init
+    const app = initializeApp(firebaseConfig);
+    const messaging = getMessaging(app);
+
+    async function enableNotifications() {
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission !== "granted") {
+                alert("Please allow notifications.");
+                return;
+            }
+
+            const token = await getToken(messaging, {
+                vapidKey: "BMlAx8Ej6IW7IabygIAimEqWRWOwpFLD5AeVwSZy8hxyz2F1qW-VmhIcGeYYevxrEXHq3sPfJooFq_jEiX9JCRw"
+            });
+
+            await fetch("/api/register-fcm", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token })
+            });
+
+            alert("Notifications Enabled!");
+        } catch (err) {
+            alert("Failed to enable notifications: " + err);
+        }
+    }
+
+    document.getElementById("notifyBtn").onclick = enableNotifications;
+</script>
+
+
 <script>
 // ---------------------------
-// LOAD RESULTS IN TABLE
+// LOAD RESULTS INTO TABLE
 // ---------------------------
 fetch("/api/results")
     .then(res => res.json())
@@ -103,50 +145,9 @@ fetch("/api/results")
             tbody.appendChild(tr);
         });
     })
-    .catch(err => {
-        document.getElementById("loading").innerText = "Failed to load data.";
+    .catch(() => {
+        document.getElementById("loading").innerText = "Failed to load results.";
     });
-
-
-// ---------------------------
-// WEB PUSH SUBSCRIPTION
-// ---------------------------
-async function url64ToUint8Array(base64) {
-    const padding = "=".repeat((4 - base64.length % 4) % 4);
-    const base64String = (base64 + padding)
-        .replace(/-/g, "+")
-        .replace(/_/g, "/");
-
-    const raw = window.atob(base64String);
-    return Uint8Array.from([...raw].map(char => char.charCodeAt(0)));
-}
-
-async function subscribeUser() {
-    if (!("serviceWorker" in navigator)) {
-        alert("Your browser does not support notifications.");
-        return;
-    }
-
-    const swReg = await navigator.serviceWorker.register("/service-worker.js");
-
-    const vapidRes = await fetch("/api/public-key");
-    const { publicKey } = await vapidRes.json();
-
-    const subscription = await swReg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: await url64ToUint8Array(publicKey)
-    });
-
-    await fetch("/api/subscribe", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(subscription)
-    });
-
-    alert("Notifications Enabled!");
-}
-
-document.getElementById("notifyBtn").onclick = subscribeUser;
 </script>
 
 </body>

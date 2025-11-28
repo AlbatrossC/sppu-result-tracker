@@ -1,71 +1,124 @@
 import os
 import json
+import time
+import jwt  # pip install PyJWT
 import psycopg2
 import requests
-from psycopg2.extras import RealDictCursor
-from pywebpush import webpush, WebPushException
+from datetime import datetime
 
-# ENV Variables
+from psycopg2.extras import RealDictCursor
+
+# ENV variables
 DATABASE_URL = os.getenv("DATABASE_URL")
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK_URL")
-VAPID_PUBLIC = os.getenv("VAPID_PUBLIC_KEY")      # needed for frontend only
-VAPID_PRIVATE = os.getenv("VAPID_PRIVATE_KEY")
-VAPID_EMAIL = os.getenv("VAPID_EMAIL")
+
+# Full service account JSON (string stored in GitHub Secrets or .env)
+FCM_SERVICE_ACCOUNT = os.getenv("FCM_SERVICE_ACCOUNT_JSON")
 
 
-# ---------------------------
-# DB Connection
-# ---------------------------
+# -----------------------------------
+# Database Connection
+# -----------------------------------
 def db():
     return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
 
-# ---------------------------
-# Discord Sender
-# ---------------------------
+# -----------------------------------
+# Send Discord notification
+# -----------------------------------
 def send_discord(message):
     if not DISCORD_WEBHOOK:
-        print("⚠ No Discord webhook URL configured.")
+        print("⚠ No Discord webhook configured.")
         return
 
     try:
         requests.post(DISCORD_WEBHOOK, json={"content": message})
-        print("✓ Discord notification sent")
+        print("✓ Discord message sent")
     except Exception as e:
-        print("❌ Discord send failed:", e)
+        print("❌ Discord error:", e)
 
 
-# ---------------------------
-# Web Push Sender
-# ---------------------------
-def send_push(subscription, data_json):
-    try:
-        webpush(
-            subscription_info={
-                "endpoint": subscription["endpoint"],
-                "keys": {
-                    "p256dh": subscription["p256dh"],
-                    "auth": subscription["auth"]
-                }
+# -----------------------------------
+# FCM v1 Auth → Generate OAuth2 Access Token
+# -----------------------------------
+def generate_access_token():
+    service_account = json.loads(FCM_SERVICE_ACCOUNT)
+
+    now = int(time.time())
+    expires = now + 3600  # valid 1 hour
+
+    payload = {
+        "iss": service_account["client_email"],
+        "scope": "https://www.googleapis.com/auth/firebase.messaging",
+        "aud": service_account["token_uri"],
+        "iat": now,
+        "exp": expires
+    }
+
+    # Sign with private key
+    signed_jwt = jwt.encode(
+        payload,
+        service_account["private_key"],
+        algorithm="RS256"
+    )
+
+    # Exchange JWT for OAuth2 token
+    r = requests.post(service_account["token_uri"],
+                      data={
+                          "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                          "assertion": signed_jwt
+                      })
+
+    token = r.json().get("access_token")
+    if not token:
+        raise Exception("Failed to generate access token")
+
+    return token
+
+
+# -----------------------------------
+# Send Firebase Cloud Messaging push
+# -----------------------------------
+def send_fcm(token, title, body):
+    access_token = generate_access_token()
+
+    url = "https://fcm.googleapis.com/v1/projects/sppu-result-tracker/messages:send"
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json; UTF-8"
+    }
+
+    payload = {
+        "message": {
+            "token": token,
+            "notification": {
+                "title": title,
+                "body": body
             },
-            data=data_json,
-            vapid_private_key=VAPID_PRIVATE,
-            vapid_claims={"sub": VAPID_EMAIL}
-        )
-        print("✓ Web Push sent →", subscription["endpoint"][:40])
+            "data": {
+                "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                "timestamp": datetime.now().isoformat()
+            }
+        }
+    }
 
-    except WebPushException as e:
-        print("❌ Web Push failed:", e)
+    response = requests.post(url, headers=headers, json=payload)
+
+    if response.status_code != 200:
+        print(f"❌ FCM error ({response.status_code}): {response.text}")
+    else:
+        print("✓ FCM sent →", token[:20], "...")
 
 
-# ---------------------------
-# Main Logic (ONE PASS)
-# ---------------------------
+# -----------------------------------
+# MAIN PROCESSING LOGIC
+# -----------------------------------
 def process():
     conn = db()
     cur = conn.cursor()
 
-    # 1. Get all unsent notifications
+    # 1️⃣ Get all unsent history items
     cur.execute("""
         SELECT id, course_name, result_date, change_type
         FROM results_history
@@ -75,45 +128,38 @@ def process():
     rows = cur.fetchall()
 
     if not rows:
-        print("No notifications to process.")
+        print("No new results to notify.")
         return
 
-    # 2. Get all push subscribers
-    cur.execute("SELECT * FROM push_subscriptions;")
-    subscribers = cur.fetchall()
+    # 2️⃣ Get all FCM tokens
+    cur.execute("SELECT token FROM fcm_tokens;")
+    tokens = cur.fetchall()
 
-    # 3. Process each row ONCE
+    # 3️⃣ Loop through new events
     for row in rows:
         course = row["course_name"]
         ctype = row["change_type"]
 
-        # Build message for Discord
+        # Build notification text
         if ctype == "added":
-            discord_msg = f"📢 **{course}** result declared!"
-            push_body = f"{course} result declared!"
+            msg = f"{course} result declared!"
         elif ctype == "updated":
-            discord_msg = f"🔄 **{course}** result updated!"
-            push_body = f"{course} result updated!"
+            msg = f"{course} result updated!"
         elif ctype == "removed":
-            discord_msg = f"❌ **{course}** result removed!"
-            push_body = f"{course} result removed!"
+            msg = f"{course} result removed!"
         else:
-            discord_msg = f"ℹ Update for {course}"
-            push_body = f"{course} updated"
+            msg = f"{course} updated."
 
-        # 4. Send Discord Notification
-        send_discord(discord_msg)
+        discord_text = f"📢 {msg}"
 
-        # 5. Send Web Push Notification
-        push_message = json.dumps({
-            "title": "📢 SPPU Result Update",
-            "body": push_body
-        })
+        # 4️⃣ Send Discord
+        send_discord(discord_text)
 
-        for sub in subscribers:
-            send_push(sub, push_message)
+        # 5️⃣ Send Firebase push to ALL users
+        for t in tokens:
+            send_fcm(t["token"], "📢 SPPU Result Update", msg)
 
-        # 6. Mark as sent ONCE
+        # 6️⃣ Mark notification as sent
         cur.execute("""
             UPDATE results_history
             SET notification_sent = TRUE
@@ -121,11 +167,11 @@ def process():
         """, (row["id"],))
         conn.commit()
 
-        print(f"✓ Marked as sent → ID {row['id']}")
+        print(f"✓ Marked ID {row['id']} as sent")
 
     cur.close()
     conn.close()
-    print("All notifications processed successfully.")
+    print("All notifications processed!")
 
 
 if __name__ == "__main__":
