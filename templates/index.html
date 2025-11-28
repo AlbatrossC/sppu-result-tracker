@@ -1,129 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SPPU Result Tracker</title>
 
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f5f7;
-            padding: 40px;
-        }
+        body { font-family: Arial, sans-serif; background: #f4f5f7; padding: 40px; }
         h1 { text-align: center; }
-
         #notifyBtn {
-            display: block;
-            margin: 20px auto;
-            padding: 12px 20px;
-            background: #0984e3;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
+            display: block; margin: 20px auto; padding: 12px 20px;
+            background: #0984e3; color: white; border: none;
+            border-radius: 8px; cursor: pointer; font-size: 16px;
         }
         #notifyBtn:hover { background: #0077c2; }
-
-        table {
-            margin-top: 30px;
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        th, td {
-            padding: 12px 10px;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background: #2d3436;
-            color: white;
-        }
+        table { margin-top: 30px; width: 100%; border-collapse: collapse; background: white; }
+        th, td { padding: 12px 10px; border-bottom: 1px solid #ddd; }
+        th { background: #2d3436; color: white; }
         tr:hover { background: #f1f1f1; }
-        #loading {
-            margin-top: 30px;
-            text-align: center;
-            font-size: 18px;
-        }
+        #loading { margin-top: 30px; text-align: center; font-size: 18px; }
     </style>
+
+    <link rel="preconnect" href="https://www.gstatic.com" />
+    <link rel="preconnect" href="https://firebase.googleapis.com" />
 </head>
 
 <body>
 
-<h1>📢 Latest SPPU Results</h1>
+<h1>SPPU Results</h1>
 
-<button id="notifyBtn">🔔 Enable Notifications</button>
+<button id="notifyBtn">Enable Notifications</button>
 
 <div id="loading">Loading results...</div>
 
 <table id="resultsTable" style="display:none;">
     <thead>
-        <tr>
-            <th>Course Name</th>
-            <th>Result Date</th>
-            <th>Last Seen</th>
-            <th>Active?</th>
-        </tr>
+    <tr>
+        <th>Course Name</th>
+        <th>Result Date</th>
+        <th>Last Seen</th>
+        <th>Active?</th>
+    </tr>
     </thead>
     <tbody id="resultsBody"></tbody>
 </table>
 
-
-<!-- Firebase Scripts -->
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-    import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-messaging.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-messaging.js";
 
-    // Your Firebase Config
-    const firebaseConfig = {
-        apiKey: "AIzaSyACkJ8BkOMwELdo-y1e4uu2HDEiU09xZ8I",
-        authDomain: "sppu-result-tracker.firebaseapp.com",
-        projectId: "sppu-result-tracker",
-        storageBucket: "sppu-result-tracker.firebasestorage.app",
-        messagingSenderId: "643791611590",
-        appId: "1:643791611590:web:d641fbab6e77a4c88959c7"
-    };
+const firebaseConfig = {
+    apiKey: "AIzaSyACkJ8BkOMwELdo-y1e4uu2HDEiU09xZ8I",
+    authDomain: "sppu-result-tracker.firebaseapp.com",
+    projectId: "sppu-result-tracker",
+    storageBucket: "sppu-result-tracker.firebasestorage.app",
+    messagingSenderId: "643791611590",
+    appId: "1:643791611590:web:d641fbab6e77a4c88959c7"
+};
 
-    // Init
-    const app = initializeApp(firebaseConfig);
-    const messaging = getMessaging(app);
+const app = initializeApp(firebaseConfig);
+const messaging = getMessaging(app);
 
-    async function enableNotifications() {
-        try {
-            const permission = await Notification.requestPermission();
-            if (permission !== "granted") {
-                alert("Please allow notifications.");
-                return;
-            }
+// PRE-REGISTER SERVICE WORKER — makes button instant
+let swReg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
 
-            const token = await getToken(messaging, {
-                vapidKey: "BMlAx8Ej6IW7IabygIAimEqWRWOwpFLD5AeVwSZy8hxyz2F1qW-VmhIcGeYYevxrEXHq3sPfJooFq_jEiX9JCRw"
-            });
-
-            await fetch("/api/register-fcm", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ token })
-            });
-
-            alert("Notifications Enabled!");
-        } catch (err) {
-            alert("Failed to enable notifications: " + err);
+async function enableNotifications() {
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+            alert("Please allow notifications");
+            return;
         }
-    }
 
-    document.getElementById("notifyBtn").onclick = enableNotifications;
+        const token = await getToken(messaging, {
+            vapidKey: "BMlAx8Ej6IW7IabygIAimEqWRWOwpFLD5AeVwSZy8hxyz2F1qW-VmhIcGeYYevxrEXHq3sPfJooFq_jEiX9JCRw",
+            serviceWorkerRegistration: swReg
+        });
+
+        await fetch("/api/register-fcm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token })
+        });
+
+        alert("Notifications Enabled!");
+    } catch (err) {
+        alert("Error enabling notifications: " + err);
+    }
+}
+
+document.getElementById("notifyBtn").onclick = enableNotifications;
 </script>
 
-
 <script>
-// ---------------------------
-// LOAD RESULTS INTO TABLE
-// ---------------------------
+// Load results
 fetch("/api/results")
     .then(res => res.json())
     .then(data => {
@@ -140,13 +110,9 @@ fetch("/api/results")
                 <td>${r.course_name}</td>
                 <td>${r.result_date}</td>
                 <td>${r.last_seen}</td>
-                <td>${r.is_active ? "Yes" : "No"}</td>
-            `;
+                <td>${r.is_active ? "Yes" : "No"}</td>`;
             tbody.appendChild(tr);
         });
-    })
-    .catch(() => {
-        document.getElementById("loading").innerText = "Failed to load results.";
     });
 </script>
 

@@ -10,27 +10,35 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# ENV Variables
+# 🔹 ENV Variables
 DATABASE_URL = os.getenv("DATABASE_URL")
 WORKFLOW_SECRET = os.getenv("WORKFLOW_SECRET")
 GH_API_TOKEN = os.getenv("GH_API_TOKEN")
 
-# GitHub Config
+# 🔹 GitHub Config
 REPO_NAME = "AlbatrossC/sppu-result-tracker"
 WORKFLOW_FILE = "fetch.yml"
 REF_BRANCH = "main"
 
 
+# ----------------------------------------------------
+# DB Connection Helper
+# ----------------------------------------------------
 def get_db():
     return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
 
+# ----------------------------------------------------
+# HOME PAGE
+# ----------------------------------------------------
 @app.route("/")
 def index():
     return render_template("index.html")
 
 
-# 🔹 Return latest results
+# ----------------------------------------------------
+# Return all active results
+# ----------------------------------------------------
 @app.route("/api/results")
 def get_results():
     try:
@@ -54,32 +62,39 @@ def get_results():
         return jsonify({"error": str(e)}), 500
 
 
-# 🔹 NEW — Register FCM token
+# ----------------------------------------------------
+# Register Firebase FCM Token
+# ----------------------------------------------------
 @app.route("/api/register-fcm", methods=["POST"])
 def register_fcm():
-    data = request.json
-    token = data.get("token")
+    try:
+        token = request.json.get("token")
 
-    if not token:
-        return jsonify({"error": "Missing token"}), 400
+        if not token:
+            return jsonify({"error": "Missing token"}), 400
 
-    conn = get_db()
-    cur = conn.cursor()
+        conn = get_db()
+        cur = conn.cursor()
 
-    cur.execute("""
-        INSERT INTO fcm_tokens (token)
-        VALUES (%s)
-        ON CONFLICT (token) DO NOTHING;
-    """, (token,))
+        cur.execute("""
+            INSERT INTO fcm_tokens (token)
+            VALUES (%s)
+            ON CONFLICT (token) DO NOTHING;
+        """, (token,))
 
-    conn.commit()
-    cur.close()
-    conn.close()
+        conn.commit()
+        cur.close()
+        conn.close()
 
-    return jsonify({"message": "Token saved"}), 201
+        return jsonify({"message": "Token saved"}), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
-# 🔹 GitHub Action trigger (unchanged)
+# ----------------------------------------------------
+# Trigger GitHub Action Workflow
+# ----------------------------------------------------
 @app.route("/api/trigger", methods=["POST"])
 def trigger_workflow():
     data = request.get_json()
@@ -93,15 +108,15 @@ def trigger_workflow():
         "X-GitHub-Api-Version": "2022-11-28"
     }
 
-    payload = {"ref": REF_BRANCH}
     url = f"https://api.github.com/repos/{REPO_NAME}/actions/workflows/{WORKFLOW_FILE}/dispatches"
+    payload = {"ref": REF_BRANCH}
 
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=10)
 
         if response.status_code == 204:
             return jsonify({
-                "message": "Workflow triggered successfully!",
+                "message": "Workflow triggered successfully",
                 "timestamp": datetime.now().isoformat()
             }), 200
 
@@ -115,16 +130,24 @@ def trigger_workflow():
         return jsonify({"error": str(e)}), 500
 
 
-# 🔹 Firebase service worker file
+# ----------------------------------------------------
+# Serve Firebase Messaging Service Worker
+# ----------------------------------------------------
 @app.route("/firebase-messaging-sw.js")
 def firebase_sw():
     return send_from_directory(".", "firebase-messaging-sw.js")
 
 
+# ----------------------------------------------------
+# Serve robots.txt
+# ----------------------------------------------------
 @app.route("/robots.txt")
 def robots():
     return send_from_directory(".", "robots.txt")
 
 
+# ----------------------------------------------------
+# Run App
+# ----------------------------------------------------
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
