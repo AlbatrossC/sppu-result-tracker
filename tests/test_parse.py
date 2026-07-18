@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from src.parse import ParseError, parse_html_content, parse_result_date, snapshot_hash
+from src.parse import ParseError, parse_html_content, parse_result_date
 
 
 FIXTURE = Path(__file__).with_name("sppu_result_page.html")
@@ -14,7 +14,6 @@ def test_saved_sppu_page_has_expected_results():
 
     assert len(records) == 259
     assert len({(row["course_key"], row["result_date"]) for row in records}) == 259
-    assert len(snapshot_hash(records)) == 64
 
 
 def test_result_date_parser_validates_real_dates():

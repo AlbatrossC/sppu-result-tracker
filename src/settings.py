@@ -15,7 +15,6 @@ class Settings:
     result_url: str = "https://onlineresults.unipune.ac.in/Result/Dashboard/Default"
     minimum_result_count: int = 25
     suspicious_count_ratio: float = 0.70
-    max_notifications_per_run: int = 100
 
     @classmethod
     def from_env(cls, require_discord: bool = True) -> "Settings":

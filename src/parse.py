@@ -1,4 +1,3 @@
-import hashlib
 import re
 import unicodedata
 from datetime import date, datetime
@@ -91,11 +90,3 @@ def parse_html_content(html_content: str, minimum_count: int = 25) -> List[Dict[
         raise ParseError(f"Duplicate result ratio is too high ({duplicate_count}/{data_rows})")
 
     return sorted(records.values(), key=lambda item: (item["course_key"], item["result_date"]))
-
-
-def snapshot_hash(records: List[Dict[str, object]]) -> str:
-    canonical = "\n".join(
-        f"{item['course_key']}|{item['result_date'].isoformat()}"
-        for item in sorted(records, key=lambda row: (row["course_key"], row["result_date"]))
-    )
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

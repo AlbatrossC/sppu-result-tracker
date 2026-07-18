@@ -77,7 +77,7 @@
             <div class="metric"><div class="metric-label">Active results</div><div id="activeCount" class="metric-value">-</div></div>
             <div class="metric"><div class="metric-label">Last successful check</div><div id="lastSuccess" class="metric-value">-</div></div>
             <div class="metric"><div class="metric-label">Pending Discord</div><div id="pendingCount" class="metric-value">-</div></div>
-            <div class="metric"><div class="metric-label">Delivery failures</div><div id="deadCount" class="metric-value">-</div></div>
+            <div class="metric"><div class="metric-label">Failed Discord</div><div id="failedCount" class="metric-value">-</div></div>
         </section>
 
         <section>
@@ -107,7 +107,7 @@
             activeCount: document.getElementById("activeCount"),
             lastSuccess: document.getElementById("lastSuccess"),
             pendingCount: document.getElementById("pendingCount"),
-            deadCount: document.getElementById("deadCount"),
+            failedCount: document.getElementById("failedCount"),
             statusDot: document.getElementById("statusDot"),
             statusText: document.getElementById("statusText"),
             resultCount: document.getElementById("resultCount"),
@@ -156,13 +156,13 @@
             elements.activeCount.textContent = health.active_results;
             elements.lastSuccess.textContent = formatDate(health.last_success, true);
             elements.pendingCount.textContent = health.pending_notifications;
-            elements.deadCount.textContent = health.dead_notifications;
+            elements.failedCount.textContent = health.failed_notifications;
 
             elements.statusDot.className = "status-dot";
-            if (health.dead_notifications > 0 || health.status === "failed") {
+            if (health.failed_notifications > 0) {
                 elements.statusDot.classList.add("error");
                 elements.statusText.textContent = "Tracker needs attention";
-            } else if (health.stale || health.pending_notifications > 0 || health.status === "suspect") {
+            } else if (health.stale || health.pending_notifications > 0) {
                 elements.statusDot.classList.add("warning");
                 elements.statusText.textContent = "Tracker is delayed";
             } else {

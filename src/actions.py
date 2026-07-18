@@ -1,8 +1,6 @@
 import logging
 import sys
 import traceback
-import uuid
-from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -14,6 +12,7 @@ from src.settings import Settings
 
 
 LOGGER = logging.getLogger("sppu_tracker")
+NOTIFICATION_LIMIT = 100
 
 
 def _configure_logging() -> None:
@@ -23,27 +22,30 @@ def _configure_logging() -> None:
     )
 
 
-def _record_failure(settings: Settings, run_id: uuid.UUID, started_at: datetime, error: str) -> None:
-    try:
-        database.record_failed_run(settings.database_url, run_id, started_at, error)
-        delivery = discord.drain_outbox(
+def _send_pending_notifications(settings: Settings) -> discord.DeliverySummary:
+    delivered = failed = 0
+    events = database.pending_notifications(settings.database_url, NOTIFICATION_LIMIT)
+
+    for event in events:
+        result = discord.send_event(settings.discord_webhook_url, event)
+        if result.sent:
+            database.mark_notification_sent(settings.database_url, event.history_id, event.result_id)
+            delivered += 1
+            continue
+
+        failed += 1
+        database.mark_notification_failed(
             settings.database_url,
-            settings.discord_webhook_url,
-            settings.max_notifications_per_run,
+            event.history_id,
+            result.error or "Discord notification failed",
         )
-        LOGGER.info(
-            "Failure outbox delivery: delivered=%s remaining=%s",
-            delivery.delivered,
-            delivery.remaining,
-        )
-    except Exception:
-        LOGGER.exception("Could not record or report the failed tracker run")
+
+    remaining = len(database.pending_notifications(settings.database_url, NOTIFICATION_LIMIT))
+    return discord.DeliverySummary(delivered=delivered, failed=failed, remaining=remaining)
 
 
 def run_workflow(settings: Settings = None) -> bool:
     _configure_logging()
-    started_at = datetime.now(timezone.utc)
-    run_id = uuid.uuid4()
 
     try:
         settings = settings or Settings.from_env()
@@ -51,19 +53,15 @@ def run_workflow(settings: Settings = None) -> bool:
         LOGGER.error("Configuration error: %s", exc)
         return False
 
-    LOGGER.info("Starting tracker run %s", run_id)
+    LOGGER.info("Starting tracker run")
     try:
         html = extract.fetch_html(settings.result_url)
         scraped = parse.parse_html_content(html, settings.minimum_result_count)
-        digest = parse.snapshot_hash(scraped)
         LOGGER.info("Validated %s unique SPPU results", len(scraped))
 
-        outcome = database.sync_database(
+        outcome = database.sync_results(
             settings.database_url,
             scraped,
-            digest,
-            run_id,
-            started_at,
             settings.suspicious_count_ratio,
         )
         LOGGER.info(
@@ -74,34 +72,18 @@ def run_workflow(settings: Settings = None) -> bool:
             outcome.updated,
             outcome.removed,
         )
-        if outcome.status == "skipped_locked":
-            return True
-        if outcome.status != "success":
-            delivery = discord.drain_outbox(
-                settings.database_url,
-                settings.discord_webhook_url,
-                settings.max_notifications_per_run,
-            )
-            LOGGER.warning("Run ended as %s; delivered %s health messages", outcome.status, delivery.delivered)
-            return False
 
-        delivery = discord.drain_outbox(
-            settings.database_url,
-            settings.discord_webhook_url,
-            settings.max_notifications_per_run,
-        )
+        delivery = _send_pending_notifications(settings)
         LOGGER.info(
-            "Discord delivery: delivered=%s failed=%s dead=%s remaining=%s",
+            "Discord delivery: delivered=%s failed=%s remaining=%s",
             delivery.delivered,
-            delivery.failed_attempts,
-            delivery.dead_lettered,
+            delivery.failed,
             delivery.remaining,
         )
-        return delivery.failed_attempts == 0
+        return delivery.failed == 0
     except Exception as exc:
-        LOGGER.error("Tracker run %s failed: %s", run_id, exc)
+        LOGGER.error("Tracker run failed: %s", exc)
         LOGGER.debug(traceback.format_exc())
-        _record_failure(settings, run_id, started_at, str(exc))
         return False
 
 

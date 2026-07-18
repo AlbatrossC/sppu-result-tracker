@@ -48,9 +48,8 @@ def get_results():
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT course_name, result_date, is_active, last_seen
+                    SELECT course_name, result_date, last_seen
                     FROM results
-                    WHERE is_active = TRUE
                     ORDER BY result_date DESC, course_name
                     """
                 )
@@ -70,45 +69,49 @@ def get_health():
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT status, started_at, finished_at, parsed_count,
-                           added_count, updated_count, removed_count
-                    FROM tracker_runs
-                    ORDER BY started_at DESC
-                    LIMIT 1
+                    SELECT COUNT(*) AS count, MAX(last_seen) AS last_seen
+                    FROM results
                     """
                 )
-                latest = cursor.fetchone()
+                results = cursor.fetchone()
                 cursor.execute(
                     """
-                    SELECT finished_at
-                    FROM tracker_runs
-                    WHERE status = 'success'
-                    ORDER BY started_at DESC
-                    LIMIT 1
+                    SELECT MAX(created_at) AS last_change
+                    FROM results_history
                     """
                 )
-                success = cursor.fetchone()
-                cursor.execute("SELECT COUNT(*) AS count FROM results WHERE is_active = TRUE")
-                active_count = cursor.fetchone()["count"]
+                history = cursor.fetchone()
                 cursor.execute(
-                    "SELECT COUNT(*) AS count FROM notification_outbox WHERE status = 'pending'"
+                    """
+                    SELECT COUNT(*) AS count
+                    FROM results_history
+                    WHERE notification_sent = FALSE
+                    """
                 )
                 pending_count = cursor.fetchone()["count"]
-                cursor.execute("SELECT COUNT(*) AS count FROM notification_outbox WHERE status = 'dead'")
-                dead_count = cursor.fetchone()["count"]
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) AS count
+                    FROM results_history
+                    WHERE notification_sent = FALSE
+                      AND notification_error IS NOT NULL
+                    """
+                )
+                failed_count = cursor.fetchone()["count"]
 
-        last_success = success["finished_at"] if success else None
+        active_count = results["count"]
+        last_success = results["last_seen"]
         stale = True
         if last_success:
             stale = (datetime.now(timezone.utc) - last_success).total_seconds() > 30 * 60
         payload = {
-            "status": latest["status"] if latest else "not_started",
+            "status": "ok" if active_count else "empty",
             "last_success": last_success,
-            "last_run": latest,
+            "last_change": history["last_change"],
             "stale": stale,
             "active_results": active_count,
             "pending_notifications": pending_count,
-            "dead_notifications": dead_count,
+            "failed_notifications": failed_count,
         }
         response = jsonify(payload)
         response.headers["Cache-Control"] = "no-store"
