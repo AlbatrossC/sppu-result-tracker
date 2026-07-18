@@ -1,39 +1,109 @@
-import extract
-import parse
-import database
+import logging
+import sys
 import traceback
-from datetime import datetime
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
 
-def run_workflow():
-    print("\n==================== SPPU Result Monitor ====================")
-    print(f"[WF] Workflow start: {datetime.now()}\n")
+
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from src import database, discord, extract, parse
+from src.settings import Settings
+
+
+LOGGER = logging.getLogger("sppu_tracker")
+
+
+def _configure_logging() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
+
+def _record_failure(settings: Settings, run_id: uuid.UUID, started_at: datetime, error: str) -> None:
+    try:
+        database.record_failed_run(settings.database_url, run_id, started_at, error)
+        delivery = discord.drain_outbox(
+            settings.database_url,
+            settings.discord_webhook_url,
+            settings.max_notifications_per_run,
+        )
+        LOGGER.info(
+            "Failure outbox delivery: delivered=%s remaining=%s",
+            delivery.delivered,
+            delivery.remaining,
+        )
+    except Exception:
+        LOGGER.exception("Could not record or report the failed tracker run")
+
+
+def run_workflow(settings: Settings = None) -> bool:
+    _configure_logging()
+    started_at = datetime.now(timezone.utc)
+    run_id = uuid.uuid4()
 
     try:
-        print("[WF] Fetching HTML...")
-        html = extract.fetch_html()
-        if not html:
-            print("[WF] ERROR: HTML fetch failed.")
-            return
-        print("[WF] HTML fetched.")
+        settings = settings or Settings.from_env()
+    except Exception as exc:
+        LOGGER.error("Configuration error: %s", exc)
+        return False
 
-        print("[WF] Parsing HTML...")
-        scraped = parse.parse_html_content(html)
-        if not scraped:
-            print("[WF] WARNING: Parsed 0 valid items. Aborting.")
-            return
-        print(f"[WF] Parsed {len(scraped)} items.")
+    LOGGER.info("Starting tracker run %s", run_id)
+    try:
+        html = extract.fetch_html(settings.result_url)
+        scraped = parse.parse_html_content(html, settings.minimum_result_count)
+        digest = parse.snapshot_hash(scraped)
+        LOGGER.info("Validated %s unique SPPU results", len(scraped))
 
-        print("[WF] Syncing database...")
-        database.sync_database(scraped)
-        print("[WF] Database sync done.")
+        outcome = database.sync_database(
+            settings.database_url,
+            scraped,
+            digest,
+            run_id,
+            started_at,
+            settings.suspicious_count_ratio,
+        )
+        LOGGER.info(
+            "Database sync status=%s baseline=%s added=%s updated=%s removed=%s",
+            outcome.status,
+            outcome.baseline_created,
+            outcome.added,
+            outcome.updated,
+            outcome.removed,
+        )
+        if outcome.status == "skipped_locked":
+            return True
+        if outcome.status != "success":
+            delivery = discord.drain_outbox(
+                settings.database_url,
+                settings.discord_webhook_url,
+                settings.max_notifications_per_run,
+            )
+            LOGGER.warning("Run ended as %s; delivered %s health messages", outcome.status, delivery.delivered)
+            return False
 
-    except Exception as e:
-        print("\n[WF] FATAL ERROR in workflow:", e)
-        print(traceback.format_exc())
-
-    print(f"\n[WF] Workflow finish: {datetime.now()}")
-    print("=============================================================\n")
+        delivery = discord.drain_outbox(
+            settings.database_url,
+            settings.discord_webhook_url,
+            settings.max_notifications_per_run,
+        )
+        LOGGER.info(
+            "Discord delivery: delivered=%s failed=%s dead=%s remaining=%s",
+            delivery.delivered,
+            delivery.failed_attempts,
+            delivery.dead_lettered,
+            delivery.remaining,
+        )
+        return delivery.failed_attempts == 0
+    except Exception as exc:
+        LOGGER.error("Tracker run %s failed: %s", run_id, exc)
+        LOGGER.debug(traceback.format_exc())
+        _record_failure(settings, run_id, started_at, str(exc))
+        return False
 
 
 if __name__ == "__main__":
-    run_workflow()
+    raise SystemExit(0 if run_workflow() else 1)

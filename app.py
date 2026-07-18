@@ -1,153 +1,171 @@
-from flask import Flask, request, jsonify, render_template, send_from_directory
-import requests
+import hmac
 import os
-from dotenv import load_dotenv
-from datetime import datetime
+from contextlib import closing
+from datetime import datetime, timezone
+
 import psycopg2
+import requests
+from dotenv import load_dotenv
+from flask import Flask, jsonify, render_template, request, send_from_directory
 from psycopg2.extras import RealDictCursor
+
+from src.settings import _validate_database_url
+
 
 load_dotenv()
 
 app = Flask(__name__)
 
-# 🔹 ENV Variables
-DATABASE_URL = os.getenv("DATABASE_URL")
-WORKFLOW_SECRET = os.getenv("WORKFLOW_SECRET")
-GH_API_TOKEN = os.getenv("GH_API_TOKEN")
-
-# 🔹 GitHub Config
-REPO_NAME = "AlbatrossC/sppu-result-tracker"
-WORKFLOW_FILE = "fetch.yml"
-REF_BRANCH = "main"
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+WORKFLOW_SECRET = os.getenv("WORKFLOW_SECRET", "").strip()
+GH_API_TOKEN = os.getenv("GH_API_TOKEN", "").strip()
+REPO_NAME = os.getenv("GH_REPO_NAME", "AlbatrossC/sppu-result-tracker").strip()
+WORKFLOW_FILE = os.getenv("GH_WORKFLOW_FILE", "fetch.yml").strip()
+REF_BRANCH = os.getenv("GH_REF_BRANCH", "main").strip()
 
 
-# ----------------------------------------------------
-# DB Connection Helper
-# ----------------------------------------------------
 def get_db():
-    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is not configured")
+    _validate_database_url(DATABASE_URL)
+    return psycopg2.connect(
+        DATABASE_URL,
+        cursor_factory=RealDictCursor,
+        connect_timeout=10,
+        application_name="sppu-result-tracker-web",
+    )
 
 
-# ----------------------------------------------------
-# HOME PAGE
-# ----------------------------------------------------
-@app.route("/")
+@app.get("/")
 def index():
     return render_template("index.html")
 
 
-# ----------------------------------------------------
-# Return all active results
-# ----------------------------------------------------
-@app.route("/api/results")
+@app.get("/api/results")
 def get_results():
     try:
-        conn = get_db()
-        cur = conn.cursor()
+        with closing(get_db()) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT course_name, result_date, is_active, last_seen
+                    FROM results
+                    WHERE is_active = TRUE
+                    ORDER BY result_date DESC, course_name
+                    """
+                )
+                rows = cursor.fetchall()
+        response = jsonify(rows)
+        response.headers["Cache-Control"] = "public, max-age=60"
+        return response
+    except Exception:
+        app.logger.exception("Could not load active results")
+        return jsonify({"error": "Results are temporarily unavailable"}), 503
 
-        cur.execute("""
-            SELECT course_name, result_date, is_active, last_seen
-            FROM results
-            WHERE is_active = TRUE
-            ORDER BY result_date DESC;
-        """)
 
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-
-        return jsonify(rows)
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# ----------------------------------------------------
-# Register Firebase FCM Token
-# ----------------------------------------------------
-@app.route("/api/register-fcm", methods=["POST"])
-def register_fcm():
+@app.get("/api/health")
+def get_health():
     try:
-        token = request.json.get("token")
+        with closing(get_db()) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT status, started_at, finished_at, parsed_count,
+                           added_count, updated_count, removed_count
+                    FROM tracker_runs
+                    ORDER BY started_at DESC
+                    LIMIT 1
+                    """
+                )
+                latest = cursor.fetchone()
+                cursor.execute(
+                    """
+                    SELECT finished_at
+                    FROM tracker_runs
+                    WHERE status = 'success'
+                    ORDER BY started_at DESC
+                    LIMIT 1
+                    """
+                )
+                success = cursor.fetchone()
+                cursor.execute("SELECT COUNT(*) AS count FROM results WHERE is_active = TRUE")
+                active_count = cursor.fetchone()["count"]
+                cursor.execute(
+                    "SELECT COUNT(*) AS count FROM notification_outbox WHERE status = 'pending'"
+                )
+                pending_count = cursor.fetchone()["count"]
+                cursor.execute("SELECT COUNT(*) AS count FROM notification_outbox WHERE status = 'dead'")
+                dead_count = cursor.fetchone()["count"]
 
-        if not token:
-            return jsonify({"error": "Missing token"}), 400
+        last_success = success["finished_at"] if success else None
+        stale = True
+        if last_success:
+            stale = (datetime.now(timezone.utc) - last_success).total_seconds() > 30 * 60
+        payload = {
+            "status": latest["status"] if latest else "not_started",
+            "last_success": last_success,
+            "last_run": latest,
+            "stale": stale,
+            "active_results": active_count,
+            "pending_notifications": pending_count,
+            "dead_notifications": dead_count,
+        }
+        response = jsonify(payload)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+    except Exception:
+        app.logger.exception("Could not load tracker health")
+        return jsonify({"error": "Tracker health is temporarily unavailable"}), 503
 
-        conn = get_db()
-        cur = conn.cursor()
 
-        cur.execute("""
-            INSERT INTO fcm_tokens (token)
-            VALUES (%s)
-            ON CONFLICT (token) DO NOTHING;
-        """, (token,))
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        return jsonify({"message": "Token saved"}), 201
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# ----------------------------------------------------
-# Trigger GitHub Action Workflow
-# ----------------------------------------------------
-@app.route("/api/trigger", methods=["POST"])
+@app.post("/api/trigger")
 def trigger_workflow():
-    data = request.get_json()
+    if not WORKFLOW_SECRET or not GH_API_TOKEN:
+        app.logger.error("Workflow trigger environment variables are missing")
+        return jsonify({"error": "Workflow trigger is not configured"}), 503
 
-    if not data or data.get("key") != WORKFLOW_SECRET:
+    data = request.get_json(silent=True) or {}
+    supplied_key = str(data.get("key", ""))
+    if not hmac.compare_digest(supplied_key, WORKFLOW_SECRET):
         return jsonify({"error": "Unauthorized"}), 401
 
     headers = {
         "Authorization": f"Bearer {GH_API_TOKEN}",
         "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28"
+        "X-GitHub-Api-Version": "2022-11-28",
     }
-
     url = f"https://api.github.com/repos/{REPO_NAME}/actions/workflows/{WORKFLOW_FILE}/dispatches"
-    payload = {"ref": REF_BRANCH}
 
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=10)
-
+        response = requests.post(
+            url,
+            headers=headers,
+            json={"ref": REF_BRANCH},
+            timeout=(5, 10),
+        )
         if response.status_code == 204:
-            return jsonify({
-                "message": "Workflow triggered successfully",
-                "timestamp": datetime.now().isoformat()
-            }), 200
+            return jsonify(
+                {
+                    "message": "Workflow accepted",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            )
 
-        return jsonify({
-            "error": "Failed to trigger workflow",
-            "status_code": response.status_code,
-            "details": response.text
-        }), response.status_code
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# ----------------------------------------------------
-# Serve Firebase Messaging Service Worker
-# ----------------------------------------------------
-@app.route("/firebase-messaging-sw.js")
-def firebase_sw():
-    return send_from_directory(".", "firebase-messaging-sw.js")
+        app.logger.error("GitHub workflow dispatch failed with status %s", response.status_code)
+        return jsonify({"error": "GitHub did not accept the workflow trigger"}), 502
+    except requests.RequestException:
+        app.logger.exception("GitHub workflow dispatch request failed")
+        return jsonify({"error": "GitHub is temporarily unavailable"}), 502
 
 
-# ----------------------------------------------------
-# Serve robots.txt
-# ----------------------------------------------------
-@app.route("/robots.txt")
+@app.get("/robots.txt")
 def robots():
     return send_from_directory(".", "robots.txt")
 
 
-# ----------------------------------------------------
-# Run App
-# ----------------------------------------------------
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(
+        debug=os.getenv("FLASK_DEBUG") == "1",
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", "5000")),
+    )

@@ -1,120 +1,199 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>SPPU Result Tracker</title>
-
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f5f7; padding: 40px; }
-        h1 { text-align: center; }
-        #notifyBtn {
-            display: block; margin: 20px auto; padding: 12px 20px;
-            background: #0984e3; color: white; border: none;
-            border-radius: 8px; cursor: pointer; font-size: 16px;
+        :root {
+            color-scheme: light;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #18212b;
+            background: #f5f7f8;
         }
-        #notifyBtn:hover { background: #0077c2; }
-        table { margin-top: 30px; width: 100%; border-collapse: collapse; background: white; }
-        th, td { padding: 12px 10px; border-bottom: 1px solid #ddd; }
-        th { background: #2d3436; color: white; }
-        tr:hover { background: #f1f1f1; }
-        #loading { margin-top: 30px; text-align: center; font-size: 18px; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #f5f7f8; }
+        header { background: #18212b; color: #fff; border-bottom: 4px solid #2d8a63; }
+        .header-inner, main { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+        .header-inner { min-height: 92px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+        h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 0; }
+        .subtitle { margin: 5px 0 0; color: #c9d1d9; font-size: 14px; }
+        .status { display: flex; align-items: center; gap: 9px; font-size: 14px; white-space: nowrap; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #8c959f; }
+        .status-dot.healthy { background: #3fb950; }
+        .status-dot.warning { background: #d29922; }
+        .status-dot.error { background: #f85149; }
+        main { padding: 28px 0 48px; }
+        .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid #d8dee4; background: #fff; }
+        .metric { padding: 18px 20px; border-right: 1px solid #d8dee4; }
+        .metric:last-child { border-right: 0; }
+        .metric-label { color: #57606a; font-size: 12px; text-transform: uppercase; font-weight: 700; }
+        .metric-value { margin-top: 6px; font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+        .toolbar { margin-top: 24px; display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+        h2 { margin: 0; font-size: 18px; letter-spacing: 0; }
+        .result-count { margin-top: 4px; color: #57606a; font-size: 13px; }
+        label { display: grid; gap: 6px; color: #57606a; font-size: 12px; font-weight: 700; }
+        input { width: min(360px, 100%); min-height: 40px; border: 1px solid #afb8c1; padding: 8px 11px; font: inherit; background: #fff; }
+        input:focus { outline: 2px solid #0969da; outline-offset: 1px; }
+        .table-wrap { margin-top: 14px; overflow-x: auto; border: 1px solid #d8dee4; background: #fff; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th, td { padding: 12px 14px; border-bottom: 1px solid #d8dee4; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+        th { background: #f0f3f5; color: #3d444d; font-size: 12px; text-transform: uppercase; }
+        td { font-size: 14px; }
+        tr:last-child td { border-bottom: 0; }
+        tbody tr:hover { background: #f6f8fa; }
+        th:nth-child(1) { width: 56%; }
+        th:nth-child(2) { width: 20%; }
+        th:nth-child(3) { width: 24%; }
+        .message { padding: 24px; text-align: center; color: #57606a; }
+        .message.error { color: #b42318; }
+        @media (max-width: 760px) {
+            .header-inner { align-items: flex-start; flex-direction: column; justify-content: center; padding: 18px 0; }
+            .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .metric:nth-child(2) { border-right: 0; }
+            .metric:nth-child(-n+2) { border-bottom: 1px solid #d8dee4; }
+            .toolbar { align-items: stretch; flex-direction: column; }
+            input { width: 100%; }
+            table { min-width: 680px; }
+        }
     </style>
-
-    <link rel="preconnect" href="https://www.gstatic.com" />
-    <link rel="preconnect" href="https://firebase.googleapis.com" />
 </head>
-
 <body>
+    <header>
+        <div class="header-inner">
+            <div>
+                <h1>SPPU Result Tracker</h1>
+                <p class="subtitle">Current results from Savitribai Phule Pune University</p>
+            </div>
+            <div class="status" aria-live="polite">
+                <span id="statusDot" class="status-dot"></span>
+                <span id="statusText">Checking tracker status</span>
+            </div>
+        </div>
+    </header>
 
-<h1>SPPU Results</h1>
+    <main>
+        <section class="metrics" aria-label="Tracker health">
+            <div class="metric"><div class="metric-label">Active results</div><div id="activeCount" class="metric-value">-</div></div>
+            <div class="metric"><div class="metric-label">Last successful check</div><div id="lastSuccess" class="metric-value">-</div></div>
+            <div class="metric"><div class="metric-label">Pending Discord</div><div id="pendingCount" class="metric-value">-</div></div>
+            <div class="metric"><div class="metric-label">Delivery failures</div><div id="deadCount" class="metric-value">-</div></div>
+        </section>
 
-<button id="notifyBtn">Enable Notifications</button>
+        <section>
+            <div class="toolbar">
+                <div>
+                    <h2>Published results</h2>
+                    <div id="resultCount" class="result-count">Loading results</div>
+                </div>
+                <label for="searchInput">Search course
+                    <input id="searchInput" type="search" placeholder="Course name" autocomplete="off">
+                </label>
+            </div>
 
-<div id="loading">Loading results...</div>
+            <div class="table-wrap">
+                <div id="message" class="message">Loading results...</div>
+                <table id="resultsTable" hidden>
+                    <thead><tr><th>Course</th><th>Result date</th><th>Last seen</th></tr></thead>
+                    <tbody id="resultsBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
 
-<table id="resultsTable" style="display:none;">
-    <thead>
-    <tr>
-        <th>Course Name</th>
-        <th>Result Date</th>
-        <th>Last Seen</th>
-        <th>Active?</th>
-    </tr>
-    </thead>
-    <tbody id="resultsBody"></tbody>
-</table>
+    <script>
+        const state = { results: [] };
+        const elements = {
+            activeCount: document.getElementById("activeCount"),
+            lastSuccess: document.getElementById("lastSuccess"),
+            pendingCount: document.getElementById("pendingCount"),
+            deadCount: document.getElementById("deadCount"),
+            statusDot: document.getElementById("statusDot"),
+            statusText: document.getElementById("statusText"),
+            resultCount: document.getElementById("resultCount"),
+            search: document.getElementById("searchInput"),
+            message: document.getElementById("message"),
+            table: document.getElementById("resultsTable"),
+            body: document.getElementById("resultsBody")
+        };
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
-import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-messaging.js";
-
-const firebaseConfig = {
-    apiKey: "AIzaSyACkJ8BkOMwELdo-y1e4uu2HDEiU09xZ8I",
-    authDomain: "sppu-result-tracker.firebaseapp.com",
-    projectId: "sppu-result-tracker",
-    storageBucket: "sppu-result-tracker.firebasestorage.app",
-    messagingSenderId: "643791611590",
-    appId: "1:643791611590:web:d641fbab6e77a4c88959c7"
-};
-
-const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
-
-// PRE-REGISTER SERVICE WORKER — makes button instant
-let swReg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-
-async function enableNotifications() {
-    try {
-        const permission = await Notification.requestPermission();
-        if (permission !== "granted") {
-            alert("Please allow notifications");
-            return;
+        function formatDate(value, includeTime = false) {
+            if (!value) return "Never";
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return String(value);
+            return new Intl.DateTimeFormat(undefined, includeTime
+                ? { dateStyle: "medium", timeStyle: "short" }
+                : { dateStyle: "medium" }).format(date);
         }
 
-        const token = await getToken(messaging, {
-            vapidKey: "BMlAx8Ej6IW7IabygIAimEqWRWOwpFLD5AeVwSZy8hxyz2F1qW-VmhIcGeYYevxrEXHq3sPfJooFq_jEiX9JCRw",
-            serviceWorkerRegistration: swReg
+        function setCell(row, value) {
+            const cell = document.createElement("td");
+            cell.textContent = value;
+            row.appendChild(cell);
+        }
+
+        function renderResults() {
+            const query = elements.search.value.trim().toLocaleLowerCase();
+            const filtered = state.results.filter(item => item.course_name.toLocaleLowerCase().includes(query));
+            elements.body.replaceChildren();
+            filtered.forEach(item => {
+                const row = document.createElement("tr");
+                setCell(row, item.course_name);
+                setCell(row, formatDate(item.result_date));
+                setCell(row, formatDate(item.last_seen, true));
+                elements.body.appendChild(row);
+            });
+            elements.resultCount.textContent = `${filtered.length} of ${state.results.length} results`;
+            elements.message.hidden = filtered.length > 0;
+            elements.message.textContent = state.results.length ? "No courses match your search." : "No active results are available.";
+            elements.table.hidden = filtered.length === 0;
+        }
+
+        async function loadHealth() {
+            const response = await fetch("/api/health", { cache: "no-store" });
+            if (!response.ok) throw new Error("Health request failed");
+            const health = await response.json();
+            elements.activeCount.textContent = health.active_results;
+            elements.lastSuccess.textContent = formatDate(health.last_success, true);
+            elements.pendingCount.textContent = health.pending_notifications;
+            elements.deadCount.textContent = health.dead_notifications;
+
+            elements.statusDot.className = "status-dot";
+            if (health.dead_notifications > 0 || health.status === "failed") {
+                elements.statusDot.classList.add("error");
+                elements.statusText.textContent = "Tracker needs attention";
+            } else if (health.stale || health.pending_notifications > 0 || health.status === "suspect") {
+                elements.statusDot.classList.add("warning");
+                elements.statusText.textContent = "Tracker is delayed";
+            } else {
+                elements.statusDot.classList.add("healthy");
+                elements.statusText.textContent = "Tracker is healthy";
+            }
+        }
+
+        async function loadResults() {
+            const response = await fetch("/api/results");
+            if (!response.ok) throw new Error("Results request failed");
+            const data = await response.json();
+            if (!Array.isArray(data)) throw new Error("Unexpected results response");
+            state.results = data;
+            renderResults();
+        }
+
+        elements.search.addEventListener("input", renderResults);
+        Promise.allSettled([loadHealth(), loadResults()]).then(outcomes => {
+            if (outcomes[0].status === "rejected") {
+                elements.statusDot.className = "status-dot error";
+                elements.statusText.textContent = "Health unavailable";
+            }
+            if (outcomes[1].status === "rejected") {
+                elements.message.hidden = false;
+                elements.message.className = "message error";
+                elements.message.textContent = "Results are temporarily unavailable.";
+                elements.table.hidden = true;
+                elements.resultCount.textContent = "Could not load results";
+            }
         });
-
-        await fetch("/api/register-fcm", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token })
-        });
-
-        alert("Notifications Enabled!");
-    } catch (err) {
-        alert("Error enabling notifications: " + err);
-    }
-}
-
-document.getElementById("notifyBtn").onclick = enableNotifications;
-</script>
-
-<script>
-// Load results
-fetch("/api/results")
-    .then(res => res.json())
-    .then(data => {
-        const tbody = document.getElementById("resultsBody");
-        const table = document.getElementById("resultsTable");
-        const loader = document.getElementById("loading");
-
-        loader.style.display = "none";
-        table.style.display = "table";
-
-        data.forEach(r => {
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td>${r.course_name}</td>
-                <td>${r.result_date}</td>
-                <td>${r.last_seen}</td>
-                <td>${r.is_active ? "Yes" : "No"}</td>`;
-            tbody.appendChild(tr);
-        });
-    });
-</script>
-
+    </script>
 </body>
 </html>

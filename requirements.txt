@@ -1,7 +1,5 @@
-Flask
-psycopg2-binary
-requests
-beautifulsoup4
-python-dotenv
-PyJWT
-cryptography<46
+Flask>=3.0,<4
+psycopg2-binary>=2.9,<3
+requests>=2.31,<3
+beautifulsoup4>=4.12,<5
+python-dotenv>=1.0,<2
