@@ -1,4 +1,4 @@
--- Minimal SPPU Result Tracker schema for PostgreSQL/Neon.
+-- SPPU Result Tracker schema for PostgreSQL/Neon.
 -- Run this after deployment to keep only the live mirror and history tables.
 
 drop table if exists public.notification_outbox;

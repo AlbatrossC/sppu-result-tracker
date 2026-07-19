@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>About | SPPU Result Tracker</title>
+    <meta name="description" content="About SPPU Result Tracker, an independent project for tracking publicly declared Savitribai Phule Pune University results and Discord alerts.">
+    <meta name="keywords" content="about SPPU result tracker, SPPU result alerts, Pune University result tracker">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#ffffff">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="About SPPU Result Tracker">
+    <meta property="og:description" content="An independent tracker for public SPPU result declarations and student-friendly alerts.">
+    <meta property="og:site_name" content="SPPU Result Tracker">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="About SPPU Result Tracker">
+    <meta name="twitter:description" content="Learn how this independent SPPU result tracker works.">
+    <style>
+        :root {
+            color-scheme: light;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f7f6f2;
+            color: #191b1f;
+            --bg: #f7f6f2;
+            --panel: #ffffff;
+            --panel-soft: #f2f4f1;
+            --ink: #191b1f;
+            --muted: #626973;
+            --line: #dfddd5;
+            --line-strong: #c9c5ba;
+            --green: #176b4d;
+            --green-dark: #0f4434;
+            --blue: #3f51b5;
+            --amber-bg: #fff8e5;
+            --amber-line: #e2c66f;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-width: 320px;
+            background: var(--bg);
+        }
+
+        a { color: inherit; }
+
+        .wrap {
+            width: min(980px, calc(100% - 32px));
+            margin: 0 auto;
+        }
+
+        .site-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.96);
+            border-bottom: 1px solid var(--line);
+            backdrop-filter: blur(10px);
+        }
+
+        .header-inner {
+            min-height: 68px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--ink);
+            font-size: 15px;
+            font-weight: 800;
+            text-decoration: none;
+        }
+
+        .brand-mark {
+            width: 32px;
+            height: 32px;
+            display: grid;
+            place-items: center;
+            border-radius: 8px;
+            background: #e8eee9;
+            border: 1px solid #cbd6ce;
+            color: var(--green-dark);
+            font-size: 13px;
+            font-weight: 900;
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .button {
+            min-height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--line-strong);
+            border-radius: 8px;
+            background: #ffffff;
+            color: var(--ink);
+            padding: 8px 13px;
+            font: inherit;
+            font-size: 14px;
+            font-weight: 700;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+        }
+
+        .button:hover {
+            border-color: #9da79f;
+            background: #f6f7f5;
+        }
+
+        .button.discord {
+            border-color: var(--blue);
+            background: var(--blue);
+            color: #ffffff;
+        }
+
+        main {
+            padding: 38px 0 56px;
+        }
+
+        .intro {
+            margin-bottom: 22px;
+        }
+
+        .eyebrow {
+            margin: 0 0 10px;
+            color: var(--green);
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0;
+        }
+
+        h1 {
+            margin: 0;
+            max-width: 780px;
+            color: var(--ink);
+            font-size: clamp(32px, 5vw, 52px);
+            line-height: 1.06;
+            letter-spacing: 0;
+        }
+
+        .lead {
+            margin: 14px 0 0;
+            max-width: 760px;
+            color: var(--muted);
+            font-size: 17px;
+            line-height: 1.65;
+        }
+
+        .content {
+            overflow: hidden;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--panel);
+        }
+
+        .section {
+            padding: 24px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .section:last-child {
+            border-bottom: 0;
+        }
+
+        h2 {
+            margin: 0 0 10px;
+            color: var(--ink);
+            font-size: 21px;
+            line-height: 1.25;
+            letter-spacing: 0;
+        }
+
+        p {
+            margin: 0 0 12px;
+            color: #39413d;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+
+        p:last-child {
+            margin-bottom: 0;
+        }
+
+        ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        li {
+            margin: 8px 0;
+            color: #39413d;
+            font-size: 15px;
+            line-height: 1.65;
+        }
+
+        .notice {
+            border: 1px solid var(--amber-line);
+            border-radius: 8px;
+            background: var(--amber-bg);
+            padding: 16px;
+        }
+
+        .notice strong {
+            color: #4f3a00;
+        }
+
+        .quick-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .split {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0;
+            border-top: 1px solid var(--line);
+        }
+
+        .split .section {
+            border-bottom: 0;
+        }
+
+        .split .section:first-child {
+            border-right: 1px solid var(--line);
+        }
+
+        .soft-row {
+            display: grid;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .soft-item {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--panel-soft);
+            padding: 13px 14px;
+            color: #39413d;
+            font-size: 14px;
+            line-height: 1.55;
+        }
+
+        .soft-item strong {
+            display: block;
+            margin-bottom: 3px;
+            color: var(--ink);
+        }
+
+        @media (max-width: 720px) {
+            .split {
+                grid-template-columns: 1fr;
+            }
+
+            .split .section:first-child {
+                border-right: 0;
+                border-bottom: 1px solid var(--line);
+            }
+        }
+
+        @media (max-width: 620px) {
+            .wrap {
+                width: min(100% - 22px, 980px);
+            }
+
+            .site-header {
+                position: static;
+            }
+
+            .header-inner {
+                align-items: stretch;
+                flex-direction: column;
+                padding: 14px 0;
+            }
+
+            .nav-actions,
+            .quick-links {
+                display: grid;
+                grid-template-columns: 1fr;
+            }
+
+            main {
+                padding-top: 28px;
+            }
+
+            .section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="site-header">
+        <div class="wrap header-inner">
+            <a class="brand" href="/" aria-label="SPPU Result Tracker home">
+                <span class="brand-mark" aria-hidden="true">SR</span>
+                <span>SPPU Result Tracker</span>
+            </a>
+            <nav class="nav-actions" aria-label="Main navigation">
+                <a class="button" href="/">Results</a>
+                <a class="button" href="https://github.com/AlbatrossC/sppu-result-tracker" target="_blank" rel="noopener noreferrer">GitHub Source</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="wrap">
+            <section class="intro" aria-labelledby="pageTitle">
+                <p class="eyebrow">About this tracker</p>
+                <h1 id="pageTitle">A cleaner way to follow SPPU result declarations</h1>
+                <p class="lead">SPPU Result Tracker is an independent project that watches the publicly available result information from Savitribai Phule Pune University and presents it in a simple, student-friendly format.</p>
+            </section>
+
+            <article class="content">
+                <section class="section" aria-labelledby="disclaimerTitle">
+                    <h2 id="disclaimerTitle">Independent Project</h2>
+                    <div class="notice">
+                        <p><strong>This website is not affiliated with SPPU.</strong> It is not endorsed by, maintained by, sponsored by, or officially connected with Savitribai Phule Pune University.</p>
+                        <p>For any official academic decision, verification, marksheet, eligibility, revaluation, or certificate-related step, always refer to the official SPPU website or your college.</p>
+                    </div>
+                </section>
+
+                <section class="section" aria-labelledby="purposeTitle">
+                    <h2 id="purposeTitle">Why This Exists</h2>
+                    <p>Students often need to check whether a result has been declared, but the official result page can be inconvenient to scan repeatedly. This tracker keeps the public information focused on the two details students usually need first: the course name and the result date.</p>
+                    <p>The goal is not to replace the official source. The goal is to make discovery faster, cleaner, and easier to follow.</p>
+                </section>
+
+                <div class="split">
+                    <section class="section" aria-labelledby="showsTitle">
+                        <h2 id="showsTitle">What It Shows</h2>
+                        <ul>
+                            <li>Declared result entries found on the public SPPU result page.</li>
+                            <li>The course name exactly as tracked by the system.</li>
+                            <li>The result date associated with that course.</li>
+                            <li>The latest time this tracker successfully checked for updates.</li>
+                        </ul>
+                    </section>
+
+                    <section class="section" aria-labelledby="doesNotShowTitle">
+                        <h2 id="doesNotShowTitle">What It Does Not Show</h2>
+                        <ul>
+                            <li>Individual student marks or seat numbers.</li>
+                            <li>Private student data of any kind.</li>
+                            <li>Official confirmation of pass, fail, revaluation, or eligibility status.</li>
+                            <li>College-specific notices that are not present in the tracked source.</li>
+                        </ul>
+                    </section>
+                </div>
+
+                <section class="section" aria-labelledby="alertsTitle">
+                    <h2 id="alertsTitle">Discord Result Alerts</h2>
+                    <p>The Discord server is for quick notifications. When the tracker detects a newly declared result, it sends a simple alert so students do not have to keep refreshing the page.</p>
+                    <div class="soft-row">
+                        <div class="soft-item"><strong>Alert wording</strong> New declarations are announced as "Result Declared" so the message is clear and user-facing.</div>
+                        <div class="soft-item"><strong>Delivery timing</strong> Alerts depend on the tracker run and Discord availability, so they may not always be instant to the second.</div>
+                    </div>
+                    <div class="quick-links">
+                        <a class="button discord" href="https://discord.gg/sHa8eqqtB" target="_blank" rel="noopener noreferrer">Join Discord Server</a>
+                    </div>
+                </section>
+
+                <section class="section" aria-labelledby="accuracyTitle">
+                    <h2 id="accuracyTitle">Accuracy And Limitations</h2>
+                    <p>The tracker tries to mirror public result declarations accurately, but it can be affected by source-page changes, network issues, hosting delays, or temporary service outages.</p>
+                    <p>If something looks unusual, treat this website as a helpful alerting tool and cross-check the information with the official SPPU source before relying on it.</p>
+                </section>
+
+                <section class="section" aria-labelledby="privacyTitle">
+                    <h2 id="privacyTitle">Privacy</h2>
+                    <p>This tracker is designed around public result declaration entries. It does not ask for roll numbers, seat numbers, names, phone numbers, passwords, or other private student information.</p>
+                </section>
+
+                <section class="section" aria-labelledby="sourceTitle">
+                    <h2 id="sourceTitle">Open Source</h2>
+                    <p>The source code is available on GitHub so the project can be inspected and improved openly.</p>
+                    <div class="quick-links">
+                        <a class="button" href="https://github.com/AlbatrossC/sppu-result-tracker" target="_blank" rel="noopener noreferrer">Open GitHub Source</a>
+                        <a class="button" href="/">Back To Results</a>
+                    </div>
+                </section>
+            </article>
+        </div>
+    </main>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # SPPU Result Tracker
 
-Minimal tracker for the SPPU result dashboard.
+Tracker for the SPPU result dashboard.
 
 The app keeps only two database tables:
 

@@ -40,17 +40,17 @@ def _format_payload(event) -> dict:
     previous_date = event.previous_date.isoformat() if event.previous_date else None
 
     if event.event_type == "added":
-        title = "Result added"
-        description = f"**{course_name}**\nResult date: `{result_date}`"
+        title = "🎓 Result Declared"
+        description = f"**{course_name}**\n📅 Result date: `{result_date}`"
     elif event.event_type == "updated":
-        title = "Result updated"
+        title = "📢 Result Date Updated"
         description = (
             f"**{course_name}**\n"
             f"Previous date: `{previous_date}`\n"
             f"New date: `{result_date}`"
         )
     else:
-        title = "Result removed"
+        title = "📌 Result Removed"
         description = f"**{course_name}**\nPrevious date: `{previous_date}`"
 
     return {
